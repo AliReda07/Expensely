@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Mic, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
@@ -12,6 +12,28 @@ interface ChatMessage {
 const WEBHOOK_URL = import.meta.env.VITE_N8N_ASK_WEBHOOK_URL as string | undefined;
 const WEBHOOK_SECRET = import.meta.env.VITE_N8N_ASK_WEBHOOK_SECRET as string | undefined;
 
+interface SpeechRecognitionResultLike {
+  transcript: string;
+}
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: { results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
 export function Ask() {
   const { categories } = useCategories();
   const { profile } = useProfile();
@@ -19,15 +41,45 @@ export function Ask() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: "Hi! Tell me things like \"spent 50 on food\", \"add 8000 income\", or \"set my balance to 1000\" and I'll update your account.",
+      text: 'Hi! Tell or say things like "spent 50 on food" or "add 8000 income" and I\'ll log it for you.',
     },
   ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const configured = Boolean(WEBHOOK_URL);
+  const voiceSupported = typeof window !== 'undefined' && Boolean(getSpeechRecognitionCtor());
+
+  useEffect(() => {
+    return () => recognitionRef.current?.stop();
+  }, []);
+
+  const toggleListening = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+
+    const recognition = new Ctor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => (prev.trim() ? `${prev.trim()} ${transcript}` : transcript));
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  };
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
@@ -114,10 +166,17 @@ export function Ask() {
           <form onSubmit={send} className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <button
               type="button"
-              disabled
-              title="Voice input coming soon"
-              aria-label="Voice input (coming soon)"
-              className="shrink-0 rounded-full p-2.5 text-slate-300"
+              onClick={toggleListening}
+              disabled={!voiceSupported}
+              title={voiceSupported ? (listening ? 'Stop listening' : 'Voice input') : 'Voice input not supported on this browser'}
+              aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+              className={`shrink-0 rounded-full p-2.5 transition-colors ${
+                listening
+                  ? 'animate-pulse bg-red-50 text-red-500'
+                  : voiceSupported
+                    ? 'text-slate-500 hover:bg-slate-100'
+                    : 'text-slate-300'
+              }`}
             >
               <Mic size={20} />
             </button>
