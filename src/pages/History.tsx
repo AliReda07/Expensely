@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Search } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
@@ -32,7 +33,16 @@ export function History() {
 
   return (
     <div className="space-y-4 px-4 pb-24 pt-6">
-      <h1 className="text-xl font-bold text-slate-800">History</h1>
+      <div className="flex items-center gap-3">
+        <Link
+          to="/"
+          aria-label="Back to Home"
+          className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
+        >
+          <ArrowLeft size={20} />
+        </Link>
+        <h1 className="text-xl font-bold text-slate-800">Transactions</h1>
+      </div>
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
