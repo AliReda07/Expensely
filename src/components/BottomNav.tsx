@@ -1,9 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { Home, History, MessageCircle, PieChart, Settings } from 'lucide-react';
+import { Home, MessageCircle, PieChart, Settings } from 'lucide-react';
 
 const items = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/history', label: 'History', icon: History },
   { to: '/insights', label: 'Insights', icon: PieChart },
   { to: '/ask', label: 'Ask', icon: MessageCircle },
   { to: '/settings', label: 'Settings', icon: Settings },
