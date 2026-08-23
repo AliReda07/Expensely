@@ -31,3 +31,6 @@ supabase/.temp
 !.env.example
 google-oauth-setup.sh
 google-oauth.env
+n8n-ask-setup.sh
+n8n-webhook.env
+expense-tracker-ask-workflow.json
