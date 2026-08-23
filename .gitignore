@@ -29,3 +29,5 @@ supabase/.temp
 .vercel
 .env*
 !.env.example
+google-oauth-setup.sh
+google-oauth.env

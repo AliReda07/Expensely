@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { GoogleLogo } from '../components/GoogleLogo';
 
 export function Signup() {
   const { user, signUpWithPassword, signInWithGoogle } = useAuth();
@@ -80,8 +81,9 @@ export function Signup() {
 
       <button
         onClick={() => signInWithGoogle()}
-        className="w-full rounded-xl border border-slate-200 py-3 font-semibold text-slate-700"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-semibold text-slate-700"
       >
+        <GoogleLogo />
         Continue with Google
       </button>
 
