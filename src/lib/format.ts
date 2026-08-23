@@ -13,7 +13,8 @@ export function monthKey(date: Date) {
 export function monthRange(date: Date) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+  const toISODate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return { start: toISODate(start), end: toISODate(end) };
 }
 

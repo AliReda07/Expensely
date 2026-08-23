@@ -16,6 +16,10 @@ Mobile-format expense tracker — React + TypeScript + Vite + Tailwind, installa
    npm install
    npm run dev
    ```
+6. **Run tests**:
+   ```bash
+   npm test
+   ```
 
 ## What's here
 
