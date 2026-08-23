@@ -13,7 +13,7 @@ import { AddTransactionSheet } from '../components/AddTransactionSheet';
 import { monthRange } from '../lib/format';
 
 export function Home() {
-  const { profile } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const { categories } = useCategories();
   const { budgets } = useBudgets();
   const { balance, refetch: refetchBalance } = useBalance(profile?.starting_balance);
@@ -44,9 +44,16 @@ export function Home() {
     return result;
   };
 
+  const handleBalanceEdit = async (newBalance: number) => {
+    const netFromTransactions = balance - (profile?.starting_balance ?? 0);
+    const result = await updateProfile({ starting_balance: newBalance - netFromTransactions });
+    if (!result.error) await refetchBalance();
+    return result;
+  };
+
   return (
     <div className="space-y-6 px-4 pb-28 pt-6">
-      <BalanceCard balance={balance} currency={currency} />
+      <BalanceCard balance={balance} currency={currency} onSave={handleBalanceEdit} />
 
       {profile?.overall_budget ? (
         <BudgetProgress label="This month's budget" spent={totalSpent} budget={profile.overall_budget} currency={currency} />
