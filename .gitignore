@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env
 .supabase_db_password.txt
+supabase/.temp
 
 # Editor directories and files
 .vscode/*
