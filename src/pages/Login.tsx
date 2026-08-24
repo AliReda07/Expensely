@@ -23,8 +23,8 @@ export function Login() {
 
   return (
     <div className="animate-row-in flex min-h-full flex-col justify-center px-6 py-12">
-      <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Expensely</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to keep tracking your spending.</p>
+      <h1 className="text-center font-brand text-4xl font-bold text-brand">Expensely</h1>
+      <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">Sign in to keep tracking your spending.</p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">
         <input
