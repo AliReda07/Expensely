@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+﻿import { useEffect, useState, type ReactNode } from 'react';
 
 export function Sheet({
   onClose,
@@ -33,7 +33,7 @@ export function Sheet({
       onClick={close}
     >
       <div
-        className={`max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] dark:bg-slate-800 ${
+        className={`max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] dark:bg-stone-800 ${
           closing ? 'animate-sheet-panel-out' : 'animate-sheet-panel-in'
         }`}
         onClick={(e) => e.stopPropagation()}

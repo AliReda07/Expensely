@@ -1,4 +1,4 @@
-import { formatCurrency } from '../lib/format';
+﻿import { formatCurrency } from '../lib/format';
 
 // Green -> amber -> red as spend approaches (and passes) the limit, interpolated smoothly
 // rather than snapping between fixed bands.
@@ -39,17 +39,17 @@ export function BudgetProgress({
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm">
-        <span className="font-medium text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="font-medium text-stone-700 dark:text-stone-300">{label}</span>
         <span
           className={`tabular-nums transition-colors ${
-            over ? 'font-semibold text-red-600 dark:text-red-400' : pct === 0 ? 'text-slate-500 dark:text-slate-400' : 'font-medium'
+            over ? 'font-semibold text-red-600 dark:text-red-400' : pct === 0 ? 'text-stone-500 dark:text-stone-400' : 'font-medium'
           }`}
           style={!over && pct > 0 ? { color } : undefined}
         >
           {formatCurrency(spent, currency)} / {formatCurrency(budget, currency)}
         </span>
       </div>
-      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-700">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{

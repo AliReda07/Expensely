@@ -1,4 +1,4 @@
-import { CreditCard, Plus, Wallet } from 'lucide-react';
+﻿import { CreditCard, Plus, Wallet } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 import type { Card } from '../types';
 
@@ -62,7 +62,7 @@ export function CardBalances({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Your cards</h2>
+        <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300">Your cards</h2>
         <button
           onClick={onAddCard}
           aria-label="Add card"
@@ -72,7 +72,7 @@ export function CardBalances({
           Add card
         </button>
       </div>
-      <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-slate-200/60 dark:divide-slate-700 dark:bg-slate-800 dark:shadow-black/30">
+      <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-800 dark:shadow-black/30">
         {rows.map((row, i) => {
           const isActive = selected === row.key;
           const isCredit = row.type === 'credit';
@@ -82,27 +82,27 @@ export function CardBalances({
                 type="button"
                 onClick={() => onSelect(row.key)}
                 aria-pressed={isActive}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-slate-50 dark:active:bg-slate-700/60 ${
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-stone-50 dark:active:bg-stone-700/60 ${
                   isActive ? 'bg-brand/5 dark:bg-brand/10' : ''
                 }`}
               >
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-2 ring-offset-2 ring-offset-white transition-all dark:ring-offset-slate-800 ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-2 ring-offset-2 ring-offset-white transition-all dark:ring-offset-stone-800 ${
                     isActive ? 'ring-brand' : 'ring-transparent'
                   }`}
                   style={row.color ? { backgroundColor: `${row.color}1a`, color: row.color } : undefined}
                 >
                   {row.type === 'cash' ? (
-                    <Wallet size={18} className="text-slate-600 dark:text-slate-300" />
+                    <Wallet size={18} className="text-stone-600 dark:text-stone-300" />
                   ) : (
                     <CreditCard size={18} />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{row.name}</p>
+                    <p className="truncate text-sm font-medium text-stone-800 dark:text-stone-100">{row.name}</p>
                     {row.last4 && (
-                      <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">••{row.last4}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-stone-500 dark:text-stone-400">••{row.last4}</span>
                     )}
                     {isCredit && (
                       <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
@@ -110,7 +110,7 @@ export function CardBalances({
                       </span>
                     )}
                   </span>
-                  <p className="truncate text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                  <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
                     {formatCurrency(row.spent, currency)} spent this month
                   </p>
                 </span>
@@ -119,13 +119,13 @@ export function CardBalances({
                     className={`block text-sm font-semibold tabular-nums ${
                       (isCredit ? row.balance > 0 : row.balance < 0)
                         ? 'text-red-600 dark:text-red-400'
-                        : 'text-slate-800 dark:text-slate-100'
+                        : 'text-stone-800 dark:text-stone-100'
                     }`}
                   >
                     {formatCurrency(row.balance, currency)}
                   </span>
                   {isCredit && (
-                    <span className="text-[10px] tabular-nums text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] tabular-nums text-stone-500 dark:text-stone-400">
                       {row.creditLimit != null ? `${formatCurrency(row.creditLimit - row.balance, currency)} left` : 'owed'}
                     </span>
                   )}

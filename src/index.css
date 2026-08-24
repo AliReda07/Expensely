@@ -5,9 +5,9 @@
 @theme {
   --color-brand: #16a34a;
   --color-brand-dark: #15803d;
-  /* The Expensely wordmark only -- rounded and a little playful, distinct from
+  /* The Expensely wordmark only -- a sharper geometric display face, distinct from
      the neutral system sans everything else in the app uses. */
-  --font-brand: 'Fredoka', ui-sans-serif, system-ui, sans-serif;
+  --font-brand: 'Sora', ui-sans-serif, system-ui, sans-serif;
 }
 
 html,
@@ -31,7 +31,7 @@ body {
 }
 
 .dark body {
-  background-color: #020617;
+  background-color: #0c0a09;
 }
 
 * {

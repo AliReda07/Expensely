@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
@@ -39,21 +39,21 @@ export function History() {
         <Link
           to="/"
           aria-label="Back to Home"
-          className="rounded-full p-1.5 text-slate-500 transition-all hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800"
+          className="rounded-full p-1.5 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-800"
         >
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Transactions</h1>
+        <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Transactions</h1>
       </div>
 
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-stone-400" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by note or category"
-          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-9 pr-3 text-sm text-stone-800 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
       </div>
 
@@ -61,7 +61,7 @@ export function History() {
         <button
           onClick={() => setCategoryFilter('all')}
           className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-            categoryFilter === 'all' ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+            categoryFilter === 'all' ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
           }`}
         >
           All
@@ -71,7 +71,7 @@ export function History() {
             key={c.id}
             onClick={() => setCategoryFilter(c.id)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-              categoryFilter === c.id ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+              categoryFilter === c.id ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
             }`}
           >
             {c.name}
@@ -80,9 +80,9 @@ export function History() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-600 dark:text-slate-400">No transactions found.</p>
+        <p className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">No transactions found.</p>
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="divide-y divide-stone-100 dark:divide-stone-800">
           {filtered.map((t, i) => (
             <div key={t.id} className="animate-row-in" style={{ animationDelay: `${Math.min(i, 6) * 30}ms` }}>
               <TransactionRow transaction={t} currency={currency} onClick={() => setEditing(t)} />

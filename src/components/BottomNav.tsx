@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+﻿import { NavLink, useLocation } from 'react-router-dom';
 import { Home, MessageCircle, PieChart, Settings } from 'lucide-react';
 
 const items = [
@@ -16,7 +16,7 @@ export function BottomNav() {
   );
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-slate-800 dark:bg-slate-900/95">
+    <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-900/95">
       <ul className="relative flex justify-around">
         <span
           className="absolute top-0 h-[2.5px] rounded-b-full bg-brand transition-transform duration-300 ease-out"
@@ -30,7 +30,7 @@ export function BottomNav() {
               end={to === '/'}
               className={({ isActive }) =>
                 `flex flex-col items-center gap-1 py-2.5 text-xs font-medium transition-all active:scale-90 ${
-                  isActive ? 'text-brand' : 'text-slate-600 dark:text-slate-400'
+                  isActive ? 'text-brand' : 'text-stone-600 dark:text-stone-400'
                 }`
               }
             >

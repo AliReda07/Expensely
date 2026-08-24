@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+﻿import { X } from 'lucide-react';
 import { AddCardForm } from './AddCardForm';
 import { Sheet } from './Sheet';
 import type { CardInput } from '../hooks/useCards';
@@ -20,10 +20,10 @@ export function AddCardSheet({
       {(close) => (
         <>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Add a card</h2>
+            <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-100">Add a card</h2>
             <button
               onClick={close}
-              className="rounded-full p-1.5 text-slate-500 transition-colors hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-full p-1.5 text-stone-500 transition-colors hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-700"
               aria-label="Close"
             >
               <X size={20} />

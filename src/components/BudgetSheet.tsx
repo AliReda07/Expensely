@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+﻿import { useState, type FormEvent } from 'react';
 import { Check, X } from 'lucide-react';
 import { Sheet } from './Sheet';
 import type { Category, Profile } from '../types';
@@ -45,10 +45,10 @@ export function BudgetSheet({
       {(close) => (
         <>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Budgets</h2>
+            <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-100">Budgets</h2>
             <button
               onClick={close}
-              className="rounded-full p-1.5 text-slate-500 transition-colors hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-full p-1.5 text-stone-500 transition-colors hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-700"
               aria-label="Close"
             >
               <X size={20} />
@@ -57,7 +57,7 @@ export function BudgetSheet({
 
           <form onSubmit={saveOverall} className="mb-6 flex items-end gap-2">
             <label className="block flex-1">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
                 Overall monthly budget{profile?.overall_budget ? ` (currently ${profile.overall_budget} ${profile.currency})` : ''}
               </span>
               <input
@@ -66,7 +66,7 @@ export function BudgetSheet({
                 value={overallBudget}
                 onChange={(e) => setOverallBudget(e.target.value)}
                 placeholder="e.g. 8000"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
               />
             </label>
             <button
@@ -80,7 +80,7 @@ export function BudgetSheet({
 
           {error && <p className="animate-shake mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-          <p className="mb-3 text-xs font-medium text-slate-500 dark:text-slate-400">Per-category limits</p>
+          <p className="mb-3 text-xs font-medium text-stone-500 dark:text-stone-400">Per-category limits</p>
           <div className="space-y-3">
             {expenseCategories.map((c) => (
               <CategoryBudgetRow
@@ -124,14 +124,14 @@ function CategoryBudgetRow({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="flex-1 text-sm text-slate-600 dark:text-slate-300">{categoryName}</span>
+      <span className="flex-1 text-sm text-stone-600 dark:text-stone-300">{categoryName}</span>
       <input
         type="text"
         inputMode="decimal"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="No limit"
-        className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-28 rounded-lg border border-stone-200 px-2 py-1.5 text-sm outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
       />
       <button
         onClick={save}
@@ -139,7 +139,7 @@ function CategoryBudgetRow({
         className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95 disabled:opacity-60 ${
           saved
             ? 'bg-brand/10 text-brand'
-            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+            : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'
         }`}
       >
         {saved ? <Check size={13} className="animate-value-pop" /> : null}

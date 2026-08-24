@@ -1,4 +1,4 @@
-import { CreditCard, X } from 'lucide-react';
+﻿import { CreditCard, X } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 import { AddCardForm } from './AddCardForm';
 import type { CardInput } from '../hooks/useCards';
@@ -24,12 +24,12 @@ export function CardsSection({
   return (
     <>
       <div className="space-y-3 p-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Add a card</p>
+        <p className="text-xs font-medium text-stone-500 dark:text-stone-400">Add a card</p>
         <AddCardForm cards={cards} currency={currency} onAdd={onAdd} />
       </div>
 
       {cards.length > 0 && (
-        <ul className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-700 dark:border-slate-700">
+        <ul className="divide-y divide-stone-100 border-t border-stone-100 dark:divide-stone-700 dark:border-stone-700">
           {cards.map((c, i) => (
             <li
               key={c.id}
@@ -44,14 +44,14 @@ export function CardsSection({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
-                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{c.name}</p>
+                  <p className="truncate text-sm font-medium text-stone-800 dark:text-stone-100">{c.name}</p>
                   {c.type === 'credit' && (
                     <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                       Credit
                     </span>
                   )}
                 </span>
-                <p className="truncate text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
                   {c.last4 ? `•••• ${c.last4}` : 'No digits saved'}
                   {c.type === 'credit' && c.credit_limit != null && (
                     <> · Limit {formatCurrency(c.credit_limit, currency)}</>

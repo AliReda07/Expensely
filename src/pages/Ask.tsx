@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+﻿import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Mic, Send, Sparkles } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
@@ -67,7 +67,7 @@ function renderWithBoldNumbers(text: string) {
   const nodes: ReactNode[] = [];
   parts.forEach((part, i) => {
     if (part) nodes.push(part);
-    if (i < numbers.length) nodes.push(<strong key={i} className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{numbers[i]}</strong>);
+    if (i < numbers.length) nodes.push(<strong key={i} className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">{numbers[i]}</strong>);
   });
   return nodes;
 }
@@ -271,8 +271,8 @@ export function Ask() {
   return (
     <div className="flex h-full flex-col pb-16">
       <div className="px-4 pb-2 pt-6">
-        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Ask</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Tell it what happened, it updates your account.</p>
+        <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Ask</h1>
+        <p className="text-sm text-stone-500 dark:text-stone-400">Tell it what happened, it updates your account.</p>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
@@ -288,7 +288,7 @@ export function Ask() {
               </div>
               <div className="min-w-0 flex-1 pt-1">
                 {m.chart && m.chart.length > 0 && (
-                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-slate-100 bg-white p-2 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
+                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-stone-100 bg-white p-2 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={m.chart} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }}>
                         <XAxis type="number" hide />
@@ -310,7 +310,7 @@ export function Ask() {
                     </ResponsiveContainer>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-stone-700 dark:text-stone-300">
                   {renderWithBoldNumbers(m.text)}
                 </p>
               </div>
@@ -323,9 +323,9 @@ export function Ask() {
               <Sparkles size={15} />
             </div>
             <div className="flex items-center gap-1 pt-3.5">
-              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0s]" />
-              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0.15s]" />
-              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0.3s]" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-stone-400 dark:bg-stone-600 [animation-delay:0s]" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-stone-400 dark:bg-stone-600 [animation-delay:0.15s]" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-stone-400 dark:bg-stone-600 [animation-delay:0.3s]" />
             </div>
           </div>
         )}
@@ -333,14 +333,14 @@ export function Ask() {
         <div ref={listEndRef} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-slate-800">
+      <div className="flex gap-2 overflow-x-auto border-t border-stone-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-stone-800">
         {quickReplies.map((q) => (
           <button
             key={q}
             type="button"
             onClick={() => void sendMessage(q)}
             disabled={sending}
-            className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-all hover:border-brand hover:text-brand active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400"
+            className="shrink-0 whitespace-nowrap rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-600 transition-all hover:border-brand hover:text-brand active:scale-95 disabled:opacity-50 dark:border-stone-700 dark:text-stone-400"
           >
             {q}
           </button>
@@ -358,8 +358,8 @@ export function Ask() {
             listening
               ? 'animate-pulse bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
               : voiceSupported
-                ? 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                : 'text-slate-300 dark:text-slate-700'
+                ? 'text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
+                : 'text-stone-300 dark:text-stone-700'
           }`}
         >
           <Mic size={20} />
@@ -369,7 +369,7 @@ export function Ask() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="e.g. spent 50 on food"
-          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
         <button
           type="submit"

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 import { Sheet } from './Sheet';
@@ -84,7 +84,7 @@ export function AddTransactionSheet({
       {(close) => (
         <>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
               {isEditing ? 'Edit transaction' : 'Add transaction'}
             </h2>
             <div className="flex items-center gap-1">
@@ -100,16 +100,16 @@ export function AddTransactionSheet({
               )}
               <button
                 onClick={close}
-                className="rounded-full p-1.5 text-slate-500 transition-colors hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-700"
+                className="rounded-full p-1.5 text-stone-500 transition-colors hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-700"
               >
                 <X size={20} />
               </button>
             </div>
           </div>
 
-          <div className="relative mb-4 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-700">
+          <div className="relative mb-4 flex rounded-xl bg-stone-100 p-1 dark:bg-stone-700">
             <div
-              className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-slate-600"
+              className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-stone-600"
               style={{ top: 4, bottom: 4, left: 4, width: 'calc(50% - 4px)', transform: `translateX(${type === 'income' ? '100%' : '0%'})` }}
             />
             {(['expense', 'income'] as TransactionType[]).map((t) => (
@@ -117,7 +117,7 @@ export function AddTransactionSheet({
                 key={t}
                 onClick={() => setType(t)}
                 className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors active:scale-95 ${
-                  type === t ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
+                  type === t ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'
                 }`}
               >
                 {t}
@@ -126,7 +126,7 @@ export function AddTransactionSheet({
           </div>
 
           <label className="mb-4 block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Amount</span>
+            <span className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">Amount</span>
             <input
               type="number"
               inputMode="decimal"
@@ -135,19 +135,19 @@ export function AddTransactionSheet({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
             />
           </label>
 
           {type === 'expense' && (
             <div className="mb-4">
-              <span className="mb-2 block text-xs font-medium text-slate-500 dark:text-slate-400">Category</span>
+              <span className="mb-2 block text-xs font-medium text-stone-500 dark:text-stone-400">Category</span>
               <div className="grid grid-cols-4 gap-3">
                 {expenseCategories.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setCategoryId(c.id)}
-                    className={`flex flex-col items-center gap-1 rounded-xl p-2 text-[11px] font-medium text-slate-600 transition-all active:scale-90 dark:text-slate-300 ${
+                    className={`flex flex-col items-center gap-1 rounded-xl p-2 text-[11px] font-medium text-stone-600 transition-all active:scale-90 dark:text-stone-300 ${
                       categoryId === c.id ? 'ring-2 ring-brand' : ''
                     }`}
                   >
@@ -161,7 +161,7 @@ export function AddTransactionSheet({
 
           {cards.length > 0 && (
             <div className="mb-4">
-              <span className="mb-2 block text-xs font-medium text-slate-500 dark:text-slate-400">Paid with</span>
+              <span className="mb-2 block text-xs font-medium text-stone-500 dark:text-stone-400">Paid with</span>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -169,7 +169,7 @@ export function AddTransactionSheet({
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
                     cardId === null
                       ? 'bg-brand text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'
                   }`}
                 >
                   Cash
@@ -182,7 +182,7 @@ export function AddTransactionSheet({
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
                       cardId === c.id
                         ? 'text-white'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                        : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'
                     }`}
                     style={cardId === c.id ? { backgroundColor: c.color } : undefined}
                   >
@@ -195,24 +195,24 @@ export function AddTransactionSheet({
           )}
 
           <label className="mb-4 block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Date</span>
+            <span className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">Date</span>
             <input
               type="date"
               value={date}
               max={new Date().toISOString().slice(0, 10)}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
             />
           </label>
 
           <label className="mb-4 block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Note (optional)</span>
+            <span className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">Note (optional)</span>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="What was this for?"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </label>
 

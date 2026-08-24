@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, Layers, Pencil, Plus, Wallet } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
@@ -170,7 +170,7 @@ export function Home() {
         ) : (
           <button
             onClick={() => setShowBudgetSheet(true)}
-            className="block w-full rounded-xl border border-dashed border-slate-300 bg-white p-3 text-center text-sm text-slate-500 transition-all active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            className="block w-full rounded-xl border border-dashed border-stone-300 bg-white p-3 text-center text-sm text-stone-500 transition-all active:scale-[0.98] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
           >
             Set a monthly budget
           </button>
@@ -179,7 +179,7 @@ export function Home() {
 
       {budgets.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Category budgets</h2>
+          <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300">Category budgets</h2>
           {budgets.map((b) => {
             const category = categories.find((c) => c.id === b.category_id);
             if (!category) return null;
@@ -198,15 +198,15 @@ export function Home() {
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Recent transactions</h2>
+          <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300">Recent transactions</h2>
           <Link to="/history" className="text-xs font-medium text-brand transition-opacity active:opacity-60">
             View all
           </Link>
         </div>
         {recent.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-400">No transactions yet.</p>
+          <p className="py-6 text-center text-sm text-stone-600 dark:text-stone-400">No transactions yet.</p>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-stone-100 dark:divide-stone-800">
             {recent.map((t, i) => (
               <div key={t.id} className="animate-row-in" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
                 <TransactionRow transaction={t} currency={currency} />

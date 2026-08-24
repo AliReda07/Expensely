@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -98,19 +98,19 @@ export function Insights() {
 
   return (
     <div className="space-y-6 px-4 pb-24 pt-6">
-      <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Insights</h1>
+      <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Insights</h1>
 
       <MonthSelector month={month} onChange={setMonth} />
 
       <div
         key={monthStart}
-        className="animate-row-in rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30"
+        className="animate-row-in rounded-2xl border border-stone-100 bg-white p-4 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30"
       >
-        <p className="text-sm text-slate-500 dark:text-slate-400">Total spent</p>
-        <p className="text-2xl font-bold tabular-nums text-slate-800 dark:text-slate-100">{formatCurrency(totalSpent, currency)}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">Total spent</p>
+        <p className="text-2xl font-bold tabular-nums text-stone-800 dark:text-stone-100">{formatCurrency(totalSpent, currency)}</p>
 
         {pieData.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-600 dark:text-slate-400">No spending this month.</p>
+          <p className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">No spending this month.</p>
         ) : (
           <>
             <div className="h-56">
@@ -137,17 +137,17 @@ export function Insights() {
             <ul className="mt-2 space-y-1.5">
               {pieData.map((d) => (
                 <li key={d.name} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <span className="flex items-center gap-2 text-stone-600 dark:text-stone-300">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
                     {d.name}
                   </span>
-                  <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">{formatCurrency(d.value, currency)}</span>
+                  <span className="font-medium tabular-nums text-stone-700 dark:text-stone-200">{formatCurrency(d.value, currency)}</span>
                 </li>
               ))}
             </ul>
             {topCategory && (
-              <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
-                You spend the most on <span className="font-semibold text-slate-600 dark:text-slate-300">{topCategory.name}</span>.
+              <p className="mt-3 text-xs text-stone-600 dark:text-stone-400">
+                You spend the most on <span className="font-semibold text-stone-600 dark:text-stone-300">{topCategory.name}</span>.
               </p>
             )}
           </>
@@ -155,23 +155,23 @@ export function Insights() {
       </div>
 
       {cards.length > 0 && (
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
-          <p className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Spending by card</p>
+        <div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30">
+          <p className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">Spending by card</p>
           <ul className="space-y-1.5">
             {cardSpend.map((c) => (
               <li key={c.key} className="flex items-center justify-between text-sm">
-                <span className="flex min-w-0 items-center gap-2 text-slate-600 dark:text-slate-300">
+                <span className="flex min-w-0 items-center gap-2 text-stone-600 dark:text-stone-300">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
                   <span className="truncate">
                     {c.name}
                     {c.last4 && (
-                      <span className="ml-1.5 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                      <span className="ml-1.5 text-xs tabular-nums text-stone-500 dark:text-stone-400">
                         ••{c.last4}
                       </span>
                     )}
                   </span>
                 </span>
-                <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+                <span className="font-medium tabular-nums text-stone-700 dark:text-stone-200">
                   {formatCurrency(c.value, currency)}
                 </span>
               </li>
@@ -180,8 +180,8 @@ export function Insights() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
-        <p className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Spending trend</p>
+      <div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30">
+        <p className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">Spending trend</p>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ left: -20 }}>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+﻿import { useState, type FormEvent, type ReactNode } from 'react';
 import { Banknote, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -54,7 +54,7 @@ export function Settings() {
 
   return (
     <div className="min-h-full space-y-6 px-4 pb-24 pt-6">
-      <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Settings</h1>
+      <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Settings</h1>
 
       <SettingsSection title="Account">
         <SettingsRow
@@ -76,9 +76,9 @@ export function Settings() {
 
       <SettingsSection title="Appearance">
         <div className="p-4">
-          <div className="relative flex rounded-xl bg-slate-100 p-1 dark:bg-slate-700">
+          <div className="relative flex rounded-xl bg-stone-100 p-1 dark:bg-stone-700">
             <div
-              className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-slate-600"
+              className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-stone-600"
               style={{
                 top: 4,
                 bottom: 4,
@@ -94,7 +94,7 @@ export function Settings() {
                 onClick={() => setTheme(value)}
                 aria-pressed={theme === value}
                 className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors active:scale-95 ${
-                  theme === value ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
+                  theme === value ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'
                 }`}
               >
                 <Icon size={15} />
@@ -146,7 +146,7 @@ export function Settings() {
             return (
               <div
                 key={c.id}
-                className="animate-row-in relative flex flex-col items-center gap-1 text-[11px] font-medium text-slate-600 transition-transform active:scale-95 dark:text-slate-400"
+                className="animate-row-in relative flex flex-col items-center gap-1 text-[11px] font-medium text-stone-600 transition-transform active:scale-95 dark:text-stone-400"
                 style={{ animationDelay: `${Math.min(i, 8) * 25}ms` }}
               >
                 <CategoryIcon category={c} />
@@ -165,14 +165,14 @@ export function Settings() {
           })}
         </div>
 
-        <form onSubmit={submitCategory} className="space-y-3 border-t border-slate-100 p-4 dark:border-slate-700">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Add a custom category</p>
+        <form onSubmit={submitCategory} className="space-y-3 border-t border-stone-100 p-4 dark:border-stone-700">
+          <p className="text-xs font-medium text-stone-500 dark:text-stone-400">Add a custom category</p>
           <input
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="Category name"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
           />
           <div className="flex flex-wrap gap-2">
             {ICON_NAMES.map((name) => {
@@ -182,9 +182,9 @@ export function Settings() {
                   key={name}
                   type="button"
                   onClick={() => setNewCategoryIcon(name)}
-                  className={`rounded-lg p-2 transition-all active:scale-90 ${newCategoryIcon === name ? 'bg-brand/10 ring-2 ring-brand' : 'bg-slate-50 dark:bg-slate-700'}`}
+                  className={`rounded-lg p-2 transition-all active:scale-90 ${newCategoryIcon === name ? 'bg-brand/10 ring-2 ring-brand' : 'bg-stone-50 dark:bg-stone-700'}`}
                 >
-                  <Icon size={18} className="text-slate-600 dark:text-slate-300" />
+                  <Icon size={18} className="text-stone-600 dark:text-stone-300" />
                 </button>
               );
             })}
@@ -195,7 +195,7 @@ export function Settings() {
                 key={color}
                 type="button"
                 onClick={() => setNewCategoryColor(color)}
-                className={`h-7 w-7 rounded-full transition-all active:scale-90 ${newCategoryColor === color ? 'ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-800' : ''}`}
+                className={`h-7 w-7 rounded-full transition-all active:scale-90 ${newCategoryColor === color ? 'ring-2 ring-offset-2 ring-stone-400 dark:ring-offset-stone-800' : ''}`}
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -235,8 +235,8 @@ export function Settings() {
 function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{title}</h2>
-      <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-slate-200/60 dark:divide-slate-700 dark:bg-slate-800 dark:shadow-black/30">
+      <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-400">{title}</h2>
+      <div className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-800 dark:shadow-black/30">
         {children}
       </div>
     </section>
@@ -268,15 +268,15 @@ function SettingsRow({
   return (
     <Comp
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors ${as === 'button' ? 'active:bg-slate-50 dark:active:bg-slate-700/60' : ''}`}
+      className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors ${as === 'button' ? 'active:bg-stone-50 dark:active:bg-stone-700/60' : ''}`}
     >
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
       <span className="min-w-0 flex-1">
-        <p className={`truncate text-sm font-medium text-slate-800 dark:text-slate-100 ${labelClassName ?? ''}`}>{label}</p>
-        {sublabel && <p className="truncate text-xs text-slate-600 dark:text-slate-400">{sublabel}</p>}
+        <p className={`truncate text-sm font-medium text-stone-800 dark:text-stone-100 ${labelClassName ?? ''}`}>{label}</p>
+        {sublabel && <p className="truncate text-xs text-stone-600 dark:text-stone-400">{sublabel}</p>}
       </span>
-      {value && <span className="text-sm text-slate-600 dark:text-slate-400">{value}</span>}
-      {as === 'button' && showChevron && <ChevronRight size={18} className="shrink-0 text-slate-300 dark:text-slate-600" />}
+      {value && <span className="text-sm text-stone-600 dark:text-stone-400">{value}</span>}
+      {as === 'button' && showChevron && <ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
     </Comp>
   );
 }

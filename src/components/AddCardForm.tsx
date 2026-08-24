@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+﻿import { useState, type FormEvent } from 'react';
 import type { CardInput } from '../hooks/useCards';
 import type { Card, CardType } from '../types';
 
@@ -83,12 +83,12 @@ export function AddCardForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Card name (e.g. Main Visa)"
-        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+        className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
       />
 
-      <div className="relative flex rounded-xl bg-slate-100 p-1 dark:bg-slate-700">
+      <div className="relative flex rounded-xl bg-stone-100 p-1 dark:bg-stone-700">
         <div
-          className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-slate-600"
+          className="absolute rounded-lg bg-white shadow transition-transform duration-200 ease-out dark:bg-stone-600"
           style={{ top: 4, bottom: 4, left: 4, width: 'calc(50% - 4px)', transform: `translateX(${type === 'credit' ? '100%' : '0%'})` }}
         />
         {TYPE_OPTIONS.map((opt) => (
@@ -98,7 +98,7 @@ export function AddCardForm({
             onClick={() => setType(opt.value)}
             aria-pressed={type === opt.value}
             className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors active:scale-95 ${
-              type === opt.value ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
+              type === opt.value ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'
             }`}
           >
             {opt.label}
@@ -115,7 +115,7 @@ export function AddCardForm({
           value={last4}
           onChange={(e) => setLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
           placeholder="Last 4 digits"
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
         <input
           type="text"
@@ -124,7 +124,7 @@ export function AddCardForm({
           value={startingBalance}
           onChange={(e) => setStartingBalance(e.target.value)}
           placeholder={type === 'credit' ? `Owed (${currency})` : `Balance (${currency})`}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
       </div>
 
@@ -135,9 +135,9 @@ export function AddCardForm({
           value={bankSender}
           onChange={(e) => setBankSender(e.target.value)}
           placeholder="Bank SMS sender (optional, e.g. HSBC)"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
           Only needed as a fallback for banks whose SMS never mention the card's last 4 digits — and only works if
           this is the one card you have from that bank.
         </p>
@@ -151,11 +151,11 @@ export function AddCardForm({
           value={creditLimit}
           onChange={(e) => setCreditLimit(e.target.value)}
           placeholder={`Credit limit (${currency}) — optional`}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="w-full rounded-xl border border-stone-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
       )}
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-stone-500 dark:text-stone-400">
         {type === 'credit'
           ? 'Credit card spending adds to what you owe. Add a limit to see available credit; only the last 4 digits are ever stored.'
           : 'Only the last 4 digits are stored — never your full card number.'}
@@ -168,7 +168,7 @@ export function AddCardForm({
             onClick={() => setColor(swatch)}
             aria-label={`Use colour ${swatch}`}
             className={`h-7 w-7 rounded-full transition-all active:scale-90 ${
-              color === swatch ? 'ring-2 ring-slate-400 ring-offset-2 dark:ring-offset-slate-800' : ''
+              color === swatch ? 'ring-2 ring-stone-400 ring-offset-2 dark:ring-offset-stone-800' : ''
             }`}
             style={{ backgroundColor: swatch }}
           />

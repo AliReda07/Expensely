@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+﻿import { useState, type ReactNode } from 'react';
 import { Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 
@@ -110,7 +110,7 @@ export function BalanceCard({
                     className="fixed inset-0 z-10 cursor-default"
                     onClick={() => setPickerOpen(false)}
                   />
-                  <div className="animate-dropdown-in absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl bg-white p-1 text-left shadow-xl dark:bg-slate-800">
+                  <div className="animate-dropdown-in absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl bg-white p-1 text-left shadow-xl dark:bg-stone-800">
                     {accountPicker.options.map((opt) => {
                       const isSelected = opt.key === accountPicker.selected;
                       return (
@@ -121,14 +121,14 @@ export function BalanceCard({
                             accountPicker.onSelect(opt.key);
                             setPickerOpen(false);
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-700 dark:active:bg-slate-600"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-stone-50 active:bg-stone-100 dark:hover:bg-stone-700 dark:active:bg-stone-600"
                         >
                           <Check size={14} className={isSelected ? 'text-brand' : 'text-transparent'} />
-                          <span className="text-slate-500 dark:text-slate-400">{opt.icon}</span>
+                          <span className="text-stone-500 dark:text-stone-400">{opt.icon}</span>
                           {opt.dotColor && (
                             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: opt.dotColor }} />
                           )}
-                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">
+                          <span className="min-w-0 flex-1 truncate font-medium text-stone-800 dark:text-stone-100">
                             {opt.label}
                           </span>
                         </button>
