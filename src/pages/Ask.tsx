@@ -1,13 +1,25 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Mic, Send } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Mic, Send, Sparkles } from 'lucide-react';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
 import { useProfile } from '../hooks/useProfile';
+import { useTransactions } from '../hooks/useTransactions';
+import { formatCurrency, monthRange } from '../lib/format';
+
+interface CategoryChartDatum {
+  name: string;
+  value: number;
+  color: string;
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
+  chart?: CategoryChartDatum[];
 }
+
+const TOP_CATEGORIES_PATTERN = /top\s+categor/i;
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_ASK_WEBHOOK_URL as string | undefined;
 const WEBHOOK_SECRET = import.meta.env.VITE_N8N_ASK_WEBHOOK_SECRET as string | undefined;
@@ -34,9 +46,55 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefin
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
+const NUMBER_PATTERN = /\d+(?:,\d{3})*(?:\.\d+)?/g;
+
+function renderWithBoldNumbers(text: string) {
+  const parts = text.split(NUMBER_PATTERN);
+  const numbers = text.match(NUMBER_PATTERN) ?? [];
+  const nodes: ReactNode[] = [];
+  parts.forEach((part, i) => {
+    if (part) nodes.push(part);
+    if (i < numbers.length) nodes.push(<strong key={i} className="font-semibold text-slate-900">{numbers[i]}</strong>);
+  });
+  return nodes;
+}
+
 export function Ask() {
   const { categories } = useCategories();
   const { profile } = useProfile();
+  const currency = profile?.currency ?? 'EGP';
+
+  const { start: monthStart, end: monthEnd } = monthRange(new Date());
+  const { transactions } = useTransactions(categories, { start: monthStart, end: monthEnd });
+
+  const topCategories = useMemo(() => {
+    const totals = new Map<string, CategoryChartDatum>();
+    for (const t of transactions) {
+      if (t.type !== 'expense') continue;
+      const name = t.category?.name ?? 'Other';
+      const color = t.category?.color ?? '#64748b';
+      const existing = totals.get(name);
+      totals.set(name, { name, color, value: (existing?.value ?? 0) + Number(t.amount) });
+    }
+    return Array.from(totals.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [transactions]);
+
+  const topCategoriesReply = (): ChatMessage => {
+    if (topCategories.length === 0) {
+      return { role: 'assistant', text: "No expenses logged this month yet." };
+    }
+    const [top, ...rest] = topCategories;
+    const restText = rest.length
+      ? `, followed by ${rest.map((d) => `${d.name} (${formatCurrency(d.value, currency)})`).join(', ')}`
+      : '';
+    return {
+      role: 'assistant',
+      text: `Your top category this month is ${top.name} at ${formatCurrency(top.value, currency)}${restText}.`,
+      chart: topCategories,
+    };
+  };
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -53,6 +111,13 @@ export function Ask() {
 
   const configured = Boolean(WEBHOOK_URL);
   const voiceSupported = typeof window !== 'undefined' && Boolean(getSpeechRecognitionCtor());
+
+  const quickReplies = [
+    'How much did I spend this month?',
+    'Can I afford a 5000 trip this weekend?',
+    'Find expenses over 1000',
+    'Show top categories',
+  ];
 
   useEffect(() => {
     return () => recognitionRef.current?.stop();
@@ -81,14 +146,19 @@ export function Ask() {
     setListening(true);
   };
 
-  const send = async (e: FormEvent) => {
-    e.preventDefault();
-    const text = input.trim();
+  const sendMessage = async (text: string) => {
     if (!text || sending) return;
 
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setInput('');
     setError(null);
+
+    if (TOP_CATEGORIES_PATTERN.test(text)) {
+      setMessages((prev) => [...prev, topCategoriesReply()]);
+      requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
+      return;
+    }
+
     setSending(true);
 
     try {
@@ -129,6 +199,11 @@ export function Ask() {
     }
   };
 
+  const send = (e: FormEvent) => {
+    e.preventDefault();
+    void sendMessage(input.trim());
+  };
+
   return (
     <div className="flex h-full flex-col pb-16">
       <div className="px-4 pb-2 pt-6">
@@ -143,27 +218,78 @@ export function Ask() {
       ) : (
         <>
           <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm ${
-                    m.role === 'user' ? 'bg-brand text-white' : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  {m.text}
+            {messages.map((m, i) =>
+              m.role === 'user' ? (
+                <div key={i} className="flex justify-end">
+                  <div className="max-w-[80%] rounded-2xl bg-brand px-3.5 py-2.5 text-sm text-white">{m.text}</div>
                 </div>
-              </div>
-            ))}
+              ) : (
+                <div key={i} className="flex gap-2.5">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                    <Sparkles size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-1">
+                    {m.chart && m.chart.length > 0 && (
+                      <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-slate-100 bg-white p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={m.chart} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }}>
+                            <XAxis type="number" hide />
+                            <YAxis
+                              type="category"
+                              dataKey="name"
+                              width={72}
+                              tick={{ fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip formatter={(value) => formatCurrency(Number(value), currency)} />
+                            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                              {m.chart.map((d) => (
+                                <Cell key={d.name} fill={d.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                      {renderWithBoldNumbers(m.text)}
+                    </p>
+                  </div>
+                </div>
+              ),
+            )}
             {sending && (
-              <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm text-slate-400">Thinking…</div>
+              <div className="flex gap-2.5">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                  <Sparkles size={15} />
+                </div>
+                <div className="flex items-center gap-1 pt-3.5">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300" />
+                </div>
               </div>
             )}
             {error && <p className="text-center text-xs text-red-600">{error}</p>}
             <div ref={listEndRef} />
           </div>
 
-          <form onSubmit={send} className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {quickReplies.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => void sendMessage(q)}
+                disabled={sending}
+                className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={send} className="flex items-center gap-2 px-4 pt-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={toggleListening}
