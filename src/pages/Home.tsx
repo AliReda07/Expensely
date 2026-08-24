@@ -9,6 +9,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
 import { BalanceCard, type AccountOption } from '../components/BalanceCard';
 import { CardBalances } from '../components/CardBalances';
+import { AddCardSheet } from '../components/AddCardSheet';
 import { BudgetProgress } from '../components/BudgetProgress';
 import { BudgetSheet } from '../components/BudgetSheet';
 import { TransactionRow } from '../components/TransactionRow';
@@ -22,7 +23,7 @@ export function Home() {
   const { profile, updateProfile } = useProfile();
   const { categories } = useCategories();
   const { budgets, setBudget } = useBudgets();
-  const { cards, updateCard, refetch: refetchCards } = useCards();
+  const { cards, addCard, updateCard, refetch: refetchCards } = useCards();
   const {
     balance,
     cashBalance,
@@ -31,6 +32,7 @@ export function Home() {
   } = useBalance(profile?.starting_balance, cards);
   const [showAdd, setShowAdd] = useState(false);
   const [showBudgetSheet, setShowBudgetSheet] = useState(false);
+  const [showAddCard, setShowAddCard] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<SelectedAccount>('total');
 
   const { start, end } = monthRange(new Date());
@@ -149,6 +151,7 @@ export function Home() {
         currency={currency}
         selected={resolvedAccount}
         onSelect={setSelectedAccount}
+        onAddCard={() => setShowAddCard(true)}
       />
 
       <div>
@@ -239,6 +242,10 @@ export function Home() {
           onSaveOverallBudget={(amount) => updateProfile({ overall_budget: amount })}
           onSaveCategoryBudget={(categoryId, amount) => setBudget(categoryId, amount)}
         />
+      )}
+
+      {showAddCard && (
+        <AddCardSheet cards={cards} currency={currency} onAdd={addCard} onClose={() => setShowAddCard(false)} />
       )}
     </div>
   );

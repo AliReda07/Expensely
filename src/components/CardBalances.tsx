@@ -1,4 +1,4 @@
-import { CreditCard, Wallet } from 'lucide-react';
+import { CreditCard, Plus, Wallet } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 import type { Card } from '../types';
 
@@ -24,6 +24,7 @@ export function CardBalances({
   currency,
   selected,
   onSelect,
+  onAddCard,
 }: {
   cards: Card[];
   balanceByCard: Map<string, number>;
@@ -33,9 +34,8 @@ export function CardBalances({
   currency: string;
   selected: SelectedAccount;
   onSelect: (account: SelectedAccount) => void;
+  onAddCard: () => void;
 }) {
-  if (cards.length === 0) return null;
-
   const rows: Row[] = [
     ...cards.map((c) => ({
       key: c.id,
@@ -61,7 +61,17 @@ export function CardBalances({
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Your cards</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Your cards</h2>
+        <button
+          onClick={onAddCard}
+          aria-label="Add card"
+          className="-m-2 flex items-center gap-1 p-2 text-xs font-medium text-brand transition-transform active:scale-95"
+        >
+          <Plus size={13} />
+          Add card
+        </button>
+      </div>
       <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-slate-200/60 dark:divide-slate-700 dark:bg-slate-800 dark:shadow-black/30">
         {rows.map((row, i) => {
           const isActive = selected === row.key;

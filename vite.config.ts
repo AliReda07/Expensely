@@ -6,6 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   server: {
     host: true,
+    // Vite doesn't read $PORT itself, so honor it explicitly -- otherwise a
+    // launcher that assigns a free port via $PORT (rather than a CLI flag)
+    // gets ignored and Vite falls back to its own 5173-and-up search instead.
+    port: process.env.PORT ? Number(process.env.PORT) : 5173,
+    strictPort: Boolean(process.env.PORT),
   },
   plugins: [
     react(),
