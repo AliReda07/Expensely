@@ -21,6 +21,7 @@ function makeTransaction(overrides: Partial<TransactionWithCategory> = {}): Tran
     amount: 42.5,
     category_id: foodCategory.id,
     category: foodCategory,
+    card_id: null,
     date: '2026-08-23',
     note: 'Lunch',
     created_at: '2026-08-23T12:00:00Z',

@@ -7,6 +7,8 @@ import { useProfile } from '../hooks/useProfile';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
 import { useBudgets } from '../hooks/useBudgets';
+import { useCards } from '../hooks/useCards';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency, monthRange } from '../lib/format';
 
 interface CategoryChartDatum {
@@ -65,7 +67,7 @@ function renderWithBoldNumbers(text: string) {
   const nodes: ReactNode[] = [];
   parts.forEach((part, i) => {
     if (part) nodes.push(part);
-    if (i < numbers.length) nodes.push(<strong key={i} className="font-semibold text-slate-900">{numbers[i]}</strong>);
+    if (i < numbers.length) nodes.push(<strong key={i} className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{numbers[i]}</strong>);
   });
   return nodes;
 }
@@ -73,11 +75,21 @@ function renderWithBoldNumbers(text: string) {
 export function Ask() {
   const { categories } = useCategories();
   const { profile } = useProfile();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const chartTooltipStyle = {
+    background: isDark ? '#1e293b' : '#ffffff',
+    border: `1px solid ${isDark ? '#334155' : '#f1f5f9'}`,
+    borderRadius: 8,
+    color: isDark ? '#f1f5f9' : '#1e293b',
+    fontSize: 13,
+  };
   const currency = profile?.currency ?? 'EGP';
 
   const { start: monthStart, end: monthEnd } = monthRange(new Date());
   const { transactions } = useTransactions(categories, { start: monthStart, end: monthEnd });
-  const { balance } = useBalance(profile?.starting_balance);
+  const { cards } = useCards();
+  const { balance } = useBalance(profile?.starting_balance, cards);
   const { budgets } = useBudgets();
 
   const monthExpenseTotal = useMemo(
@@ -259,24 +271,24 @@ export function Ask() {
   return (
     <div className="flex h-full flex-col pb-16">
       <div className="px-4 pb-2 pt-6">
-        <h1 className="text-xl font-bold text-slate-800">Ask</h1>
-        <p className="text-sm text-slate-500">Tell it what happened, it updates your account.</p>
+        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Ask</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Tell it what happened, it updates your account.</p>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
         {messages.map((m, i) =>
           m.role === 'user' ? (
-            <div key={i} className="flex justify-end">
+            <div key={i} className="animate-row-in flex justify-end">
               <div className="max-w-[80%] rounded-2xl bg-brand px-3.5 py-2.5 text-sm text-white">{m.text}</div>
             </div>
           ) : (
-            <div key={i} className="flex gap-2.5">
+            <div key={i} className="animate-row-in flex gap-2.5">
               <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                 <Sparkles size={15} />
               </div>
               <div className="min-w-0 flex-1 pt-1">
                 {m.chart && m.chart.length > 0 && (
-                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-slate-100 bg-white p-2">
+                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-slate-100 bg-white p-2 shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={m.chart} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }}>
                         <XAxis type="number" hide />
@@ -284,12 +296,12 @@ export function Ask() {
                           type="category"
                           dataKey="name"
                           width={72}
-                          tick={{ fontSize: 11 }}
+                          tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }}
                           axisLine={false}
                           tickLine={false}
                         />
-                        <Tooltip formatter={(value) => formatCurrency(Number(value), currency)} />
-                        <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                        <Tooltip formatter={(value) => formatCurrency(Number(value), currency)} contentStyle={chartTooltipStyle} />
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]} animationDuration={450} animationEasing="ease-out">
                           {m.chart.map((d) => (
                             <Cell key={d.name} fill={d.color} />
                           ))}
@@ -298,7 +310,7 @@ export function Ask() {
                     </ResponsiveContainer>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                   {renderWithBoldNumbers(m.text)}
                 </p>
               </div>
@@ -311,24 +323,24 @@ export function Ask() {
               <Sparkles size={15} />
             </div>
             <div className="flex items-center gap-1 pt-3.5">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 [animation-delay:-0.3s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 [animation-delay:-0.15s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0s]" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0.15s]" />
+              <span className="animate-typing-dot h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600 [animation-delay:0.3s]" />
             </div>
           </div>
         )}
-        {error && <p className="text-center text-xs text-red-600">{error}</p>}
+        {error && <p className="text-center text-xs text-red-600 dark:text-red-400">{error}</p>}
         <div ref={listEndRef} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-slate-800">
         {quickReplies.map((q) => (
           <button
             key={q}
             type="button"
             onClick={() => void sendMessage(q)}
             disabled={sending}
-            className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+            className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-all hover:border-brand hover:text-brand active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400"
           >
             {q}
           </button>
@@ -342,12 +354,12 @@ export function Ask() {
           disabled={!voiceSupported}
           title={voiceSupported ? (listening ? 'Stop listening' : 'Voice input') : 'Voice input not supported on this browser'}
           aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-          className={`shrink-0 rounded-full p-2.5 transition-colors ${
+          className={`shrink-0 rounded-full p-2.5 transition-all active:scale-90 ${
             listening
-              ? 'animate-pulse bg-red-50 text-red-500'
+              ? 'animate-pulse bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
               : voiceSupported
-                ? 'text-slate-500 hover:bg-slate-100'
-                : 'text-slate-300'
+                ? 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                : 'text-slate-300 dark:text-slate-700'
           }`}
         >
           <Mic size={20} />
@@ -357,13 +369,13 @@ export function Ask() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="e.g. spent 50 on food"
-          className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-brand"
+          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition-colors focus:border-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
         <button
           type="submit"
           disabled={sending || !input.trim()}
           aria-label="Send"
-          className="shrink-0 rounded-full bg-brand p-2.5 text-white disabled:opacity-50"
+          className="shrink-0 rounded-full bg-brand p-2.5 text-white transition-transform active:scale-90 disabled:opacity-50 disabled:active:scale-100"
         >
           <Send size={18} />
         </button>

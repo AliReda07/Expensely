@@ -7,6 +7,7 @@ export interface TransactionInput {
   type: TransactionType;
   amount: number;
   category_id: string | null;
+  card_id: string | null;
   date: string;
   note: string | null;
 }
@@ -27,7 +28,7 @@ export function useTransactions(categories: Category[], options: Options = {}) {
     if (!user) return;
     let query = supabase
       .from('transactions')
-      .select('id, user_id, type, amount, category_id, date, note, created_at')
+      .select('id, user_id, type, amount, category_id, card_id, date, note, created_at')
       .eq('user_id', user.id)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });

@@ -73,13 +73,60 @@ insert into public.categories (user_id, name, icon, color, is_preset) values
   (null, 'Other', 'more-horizontal', '#64748b', true),
   (null, 'Income', 'wallet', '#16a34a', true);
 
+-- Cards: a user's individual payment cards.
+--
+-- Only the last four digits are ever stored. A full card number (PAN) is
+-- PCI-DSS regulated data and must never live in this table -- the CHECK
+-- constraint below makes storing anything longer than four digits impossible.
+create table public.cards (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  last4 text check (last4 ~ '^[0-9]{4}$'),
+  color text not null default '#3b82f6',
+  -- Debit: starting_balance + income - expenses = money available.
+  -- Credit: starting_balance + expenses - income = amount owed (a liability).
+  type text not null default 'debit' check (type in ('debit', 'credit')),
+  starting_balance numeric not null default 0,
+  -- Credit cards only: the card's limit, so "available credit" (limit - owed) can be
+  -- shown without changing how owed itself is tracked.
+  credit_limit numeric check (credit_limit is null or credit_limit >= 0),
+  -- The bank's SMS sender name/hotline, e.g. "HSBC" or a shortcode. Used by the SMS
+  -- webhook only as a fallback card match when a bank's SMS never includes the card's
+  -- last 4 digits -- and only when exactly one of the user's cards has that sender.
+  bank_sender text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.cards enable row level security;
+
+create policy "cards are owner-only select" on public.cards
+  for select using (auth.uid() = user_id);
+
+create policy "cards are owner-only insert" on public.cards
+  for insert with check (auth.uid() = user_id);
+
+create policy "cards are owner-only update" on public.cards
+  for update using (auth.uid() = user_id);
+
+create policy "cards are owner-only delete" on public.cards
+  for delete using (auth.uid() = user_id);
+
+-- Last four digits are unique per user so an incoming bank SMS naming
+-- "card ending 1234" always resolves to exactly one card.
+create unique index cards_user_last4_idx on public.cards (user_id, last4)
+  where last4 is not null;
+
 -- Transactions: both expenses and income share this table.
+-- card_id = null means cash / unassigned. Removing a card preserves its
+-- transaction history rather than deleting it.
 create table public.transactions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users (id) on delete cascade,
   type text not null check (type in ('expense', 'income')),
   amount numeric not null check (amount > 0),
   category_id uuid references public.categories (id) on delete set null,
+  card_id uuid references public.cards (id) on delete set null,
   date date not null default current_date,
   note text,
   created_at timestamptz not null default now()
@@ -100,6 +147,7 @@ create policy "transactions are owner-only delete" on public.transactions
   for delete using (auth.uid() = user_id);
 
 create index transactions_user_date_idx on public.transactions (user_id, date desc);
+create index transactions_card_idx on public.transactions (card_id);
 
 -- Per-category budgets. The overall monthly budget lives on profiles.overall_budget
 -- instead of a nullable category_id here, so this table can use a plain
