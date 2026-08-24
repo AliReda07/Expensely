@@ -36,4 +36,5 @@ export interface Profile {
   starting_balance: number;
   overall_budget: number | null;
   currency: string;
+  sms_token: string | null;
 }

@@ -12,7 +12,7 @@ export function useProfile() {
     if (!user) return;
     const { data } = await supabase
       .from('profiles')
-      .select('id, starting_balance, overall_budget, currency')
+      .select('id, starting_balance, overall_budget, currency, sms_token')
       .eq('id', user.id)
       .single();
     setProfile(data);
@@ -24,7 +24,7 @@ export function useProfile() {
   }, [refetch]);
 
   const updateProfile = async (
-    patch: Partial<Pick<Profile, 'starting_balance' | 'overall_budget' | 'currency'>>
+    patch: Partial<Pick<Profile, 'starting_balance' | 'overall_budget' | 'currency' | 'sms_token'>>
   ) => {
     if (!user) return { error: 'Not signed in' };
     const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);

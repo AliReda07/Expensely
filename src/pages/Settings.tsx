@@ -1,11 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { ChevronRight, LogOut, Wallet, X } from 'lucide-react';
+import { Banknote, ChevronRight, LogOut, MessageSquareText, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { BudgetSheet } from '../components/BudgetSheet';
+import { SmsAutoLogSheet } from '../components/SmsAutoLogSheet';
 import { ICON_NAMES, getIcon } from '../lib/icons';
 
 const SWATCHES = ['#f97316', '#3b82f6', '#ec4899', '#ef4444', '#a855f7', '#22c55e', '#14b8a6', '#64748b', '#eab308', '#06b6d4'];
@@ -17,6 +18,7 @@ export function Settings() {
   const { budgets, setBudget } = useBudgets();
 
   const [showBudgets, setShowBudgets] = useState(false);
+  const [showSmsSheet, setShowSmsSheet] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState(ICON_NAMES[0]);
@@ -40,7 +42,7 @@ export function Settings() {
   };
 
   return (
-    <div className="min-h-full space-y-6 bg-slate-50 px-4 pb-24 pt-6">
+    <div className="min-h-full space-y-6 px-4 pb-24 pt-6">
       <h1 className="text-xl font-bold text-slate-800">Settings</h1>
 
       <SettingsSection title="Account">
@@ -70,7 +72,15 @@ export function Settings() {
           icon={<Wallet size={18} className="text-emerald-600" />}
           iconBg="bg-emerald-50"
         />
-        <SettingsRow label="Currency" value={profile?.currency ?? 'EGP'} icon={<span className="text-sm">💰</span>} iconBg="bg-sky-50" />
+        <SettingsRow label="Currency" value={profile?.currency ?? 'EGP'} icon={<Banknote size={18} className="text-sky-600" />} iconBg="bg-sky-50" />
+        <SettingsRow
+          as="button"
+          onClick={() => setShowSmsSheet(true)}
+          label="SMS auto-logging"
+          sublabel={profile?.sms_token ? 'Enabled' : 'Log expenses from bank SMS automatically'}
+          icon={<MessageSquareText size={18} className="text-violet-600" />}
+          iconBg="bg-violet-50"
+        />
       </SettingsSection>
 
       <SettingsSection title="Categories">
@@ -85,9 +95,9 @@ export function Settings() {
                   <button
                     onClick={() => handleDeleteCategory(c.id, c.name)}
                     aria-label={`Delete ${c.name}`}
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow"
                   >
-                    <X size={12} />
+                    <X size={13} />
                   </button>
                 )}
               </div>
@@ -150,6 +160,14 @@ export function Settings() {
           onSaveCategoryBudget={(categoryId, amount) => setBudget(categoryId, amount)}
         />
       )}
+
+      {showSmsSheet && (
+        <SmsAutoLogSheet
+          profile={profile}
+          onClose={() => setShowSmsSheet(false)}
+          onSaveToken={(token) => updateProfile({ sms_token: token })}
+        />
+      )}
     </div>
   );
 }
@@ -157,8 +175,8 @@ export function Settings() {
 function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h2>
-      <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white">{children}</div>
+      <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-600">{title}</h2>
+      <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-slate-200/60">{children}</div>
     </section>
   );
 }
@@ -193,9 +211,9 @@ function SettingsRow({
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
       <span className="min-w-0 flex-1">
         <p className={`truncate text-sm font-medium text-slate-800 ${labelClassName ?? ''}`}>{label}</p>
-        {sublabel && <p className="truncate text-xs text-slate-400">{sublabel}</p>}
+        {sublabel && <p className="truncate text-xs text-slate-600">{sublabel}</p>}
       </span>
-      {value && <span className="text-sm text-slate-400">{value}</span>}
+      {value && <span className="text-sm text-slate-600">{value}</span>}
       {as === 'button' && showChevron && <ChevronRight size={18} className="shrink-0 text-slate-300" />}
     </Comp>
   );
