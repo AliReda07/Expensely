@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
 import { useProfile } from '../hooks/useProfile';
 import { useTransactions } from '../hooks/useTransactions';
+import { useBalance } from '../hooks/useBalance';
+import { useBudgets } from '../hooks/useBudgets';
 import { formatCurrency, monthRange } from '../lib/format';
 
 interface CategoryChartDatum {
@@ -20,6 +22,7 @@ interface ChatMessage {
 }
 
 const TOP_CATEGORIES_PATTERN = /top\s+categor/i;
+const AFFORD_PATTERN = /\bafford\b/i;
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_ASK_WEBHOOK_URL as string | undefined;
 const WEBHOOK_SECRET = import.meta.env.VITE_N8N_ASK_WEBHOOK_SECRET as string | undefined;
@@ -48,6 +51,17 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefin
 
 const NUMBER_PATTERN = /\d+(?:,\d{3})*(?:\.\d+)?/g;
 
+function parseFirstAmount(text: string): number | null {
+  const match = text.match(NUMBER_PATTERN);
+  if (!match) return null;
+  const value = Number(match[0].replace(/,/g, ''));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function renderWithBoldNumbers(text: string) {
   const parts = text.split(NUMBER_PATTERN);
   const numbers = text.match(NUMBER_PATTERN) ?? [];
@@ -66,6 +80,13 @@ export function Ask() {
 
   const { start: monthStart, end: monthEnd } = monthRange(new Date());
   const { transactions } = useTransactions(categories, { start: monthStart, end: monthEnd });
+  const { balance } = useBalance(profile?.starting_balance);
+  const { budgets } = useBudgets();
+
+  const monthExpenseTotal = useMemo(
+    () => transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0),
+    [transactions],
+  );
 
   const topCategories = useMemo(() => {
     const totals = new Map<string, CategoryChartDatum>();
@@ -94,6 +115,39 @@ export function Ask() {
       text: `Your top category this month is ${top.name} at ${formatCurrency(top.value, currency)}${restText}.`,
       chart: topCategories,
     };
+  };
+
+  const affordabilityReply = (amount: number, rawText: string): ChatMessage => {
+    const canAfford = balance >= amount;
+
+    if (!canAfford) {
+      return {
+        role: 'assistant',
+        text: `Not quite — that's ${formatCurrency(amount, currency)} but you only have ${formatCurrency(balance, currency)} available right now, so you'd be short by ${formatCurrency(amount - balance, currency)}.`,
+      };
+    }
+
+    let text = `Yes, you can afford that — you'd have ${formatCurrency(balance - amount, currency)} left afterward.`;
+
+    const overallBudget = profile?.overall_budget ?? null;
+    if (overallBudget && monthExpenseTotal + amount > overallBudget) {
+      const over = monthExpenseTotal + amount - overallBudget;
+      text += ` Heads up though: that would put you ${formatCurrency(over, currency)} over your ${formatCurrency(overallBudget, currency)} monthly budget (you've already spent ${formatCurrency(monthExpenseTotal, currency)} this month).`;
+    }
+
+    const mentionedCategory = categories.find((c) => new RegExp(`\\b${escapeRegExp(c.name)}\\b`, 'i').test(rawText));
+    const categoryBudget = mentionedCategory && budgets.find((b) => b.category_id === mentionedCategory.id);
+    if (mentionedCategory && categoryBudget) {
+      const categorySpent = transactions
+        .filter((t) => t.type === 'expense' && t.category_id === mentionedCategory.id)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      if (categorySpent + amount > categoryBudget.amount) {
+        const over = categorySpent + amount - categoryBudget.amount;
+        text += ` It'd also push your ${mentionedCategory.name} budget over by ${formatCurrency(over, currency)}.`;
+      }
+    }
+
+    return { role: 'assistant', text };
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -157,6 +211,15 @@ export function Ask() {
       setMessages((prev) => [...prev, topCategoriesReply()]);
       requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
       return;
+    }
+
+    if (AFFORD_PATTERN.test(text)) {
+      const amount = parseFirstAmount(text);
+      if (amount !== null) {
+        setMessages((prev) => [...prev, affordabilityReply(amount, text)]);
+        requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
+        return;
+      }
     }
 
     setSending(true);
