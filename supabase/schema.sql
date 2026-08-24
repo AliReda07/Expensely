@@ -1,4 +1,4 @@
--- Expense Tracker schema
+-- Expensely schema
 -- Run this once in the Supabase SQL editor for your project.
 
 create extension if not exists "uuid-ossp";

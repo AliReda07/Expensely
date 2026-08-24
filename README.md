@@ -1,4 +1,4 @@
-# Expense Tracker
+# Expensely
 
 Mobile-format expense tracker — React + TypeScript + Vite + Tailwind, installable as a PWA, backed by Supabase.
 

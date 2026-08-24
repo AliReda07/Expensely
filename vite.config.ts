@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['pwa-icon.svg'],
       manifest: {
-        name: 'Expense Tracker',
-        short_name: 'Expenses',
+        name: 'Expensely',
+        short_name: 'Expensely',
         description: 'Track balance, budgets, and spending on the go.',
         theme_color: '#16a34a',
         background_color: '#ffffff',
