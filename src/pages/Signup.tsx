@@ -29,6 +29,7 @@ export function Signup() {
   if (confirmSent) {
     return (
       <div className="animate-row-in flex min-h-full flex-col items-center justify-center px-6 text-center">
+        <p className="mb-1 text-sm font-semibold text-brand">Expensely</p>
         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Check your email</h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           We sent a confirmation link to {email}. Confirm it, then sign in.
@@ -42,6 +43,7 @@ export function Signup() {
 
   return (
     <div className="animate-row-in flex min-h-full flex-col justify-center px-6 py-12">
+      <p className="mb-1 text-sm font-semibold text-brand">Expensely</p>
       <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Create your account</h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Start tracking your balance, budgets, and spending.</p>
 
