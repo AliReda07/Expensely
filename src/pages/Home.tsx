@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
@@ -8,6 +8,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
 import { BalanceCard } from '../components/BalanceCard';
 import { BudgetProgress } from '../components/BudgetProgress';
+import { BudgetSheet } from '../components/BudgetSheet';
 import { TransactionRow } from '../components/TransactionRow';
 import { AddTransactionSheet } from '../components/AddTransactionSheet';
 import { monthRange } from '../lib/format';
@@ -15,9 +16,10 @@ import { monthRange } from '../lib/format';
 export function Home() {
   const { profile, updateProfile } = useProfile();
   const { categories } = useCategories();
-  const { budgets } = useBudgets();
+  const { budgets, setBudget } = useBudgets();
   const { balance, refetch: refetchBalance } = useBalance(profile?.starting_balance);
   const [showAdd, setShowAdd] = useState(false);
+  const [showBudgetSheet, setShowBudgetSheet] = useState(false);
 
   const { start, end } = monthRange(new Date());
   const { transactions: monthTransactions, addTransaction, refetch: refetchMonth } = useTransactions(categories, {
@@ -35,6 +37,8 @@ export function Home() {
     if (!t.category_id) continue;
     spentByCategory.set(t.category_id, (spentByCategory.get(t.category_id) ?? 0) + Number(t.amount));
   }
+
+  const budgetByCategory = new Map(budgets.map((b) => [b.category_id, b.amount]));
 
   const handleAdd = async (input: Parameters<typeof addTransaction>[0]) => {
     const result = await addTransaction(input);
@@ -55,13 +59,28 @@ export function Home() {
     <div className="space-y-6 px-4 pb-28 pt-6">
       <BalanceCard balance={balance} currency={currency} onSave={handleBalanceEdit} />
 
-      {profile?.overall_budget ? (
-        <BudgetProgress label="This month's budget" spent={totalSpent} budget={profile.overall_budget} currency={currency} />
-      ) : (
-        <Link to="/settings" className="block rounded-xl border border-dashed border-slate-300 p-3 text-center text-sm text-slate-500">
-          Set a monthly budget in Settings
-        </Link>
-      )}
+      <div>
+        <div className="mb-1 flex items-center justify-end">
+          <button
+            onClick={() => setShowBudgetSheet(true)}
+            aria-label="Edit budget"
+            className="flex items-center gap-1 text-xs font-medium text-brand"
+          >
+            <Pencil size={12} />
+            Edit budget
+          </button>
+        </div>
+        {profile?.overall_budget ? (
+          <BudgetProgress label="This month's budget" spent={totalSpent} budget={profile.overall_budget} currency={currency} />
+        ) : (
+          <button
+            onClick={() => setShowBudgetSheet(true)}
+            className="block w-full rounded-xl border border-dashed border-slate-300 p-3 text-center text-sm text-slate-500"
+          >
+            Set a monthly budget
+          </button>
+        )}
+      </div>
 
       {budgets.length > 0 && (
         <div className="space-y-3">
@@ -110,6 +129,17 @@ export function Home() {
 
       {showAdd && (
         <AddTransactionSheet categories={categories} onClose={() => setShowAdd(false)} onAdd={handleAdd} />
+      )}
+
+      {showBudgetSheet && (
+        <BudgetSheet
+          profile={profile}
+          categories={categories}
+          budgetByCategory={budgetByCategory}
+          onClose={() => setShowBudgetSheet(false)}
+          onSaveOverallBudget={(amount) => updateProfile({ overall_budget: amount })}
+          onSaveCategoryBudget={(categoryId, amount) => setBudget(categoryId, amount)}
+        />
       )}
     </div>
   );

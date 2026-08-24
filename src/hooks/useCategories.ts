@@ -36,5 +36,11 @@ export function useCategories() {
     return { error: error?.message ?? null };
   };
 
-  return { categories, loading, addCategory, refetch };
+  const deleteCategory = async (id: string) => {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (!error) await refetch();
+    return { error: error?.message ?? null };
+  };
+
+  return { categories, loading, addCategory, deleteCategory, refetch };
 }

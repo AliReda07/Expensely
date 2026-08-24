@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { ChevronRight, LogOut, Wallet } from 'lucide-react';
+import { ChevronRight, LogOut, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -13,7 +13,7 @@ const SWATCHES = ['#f97316', '#3b82f6', '#ec4899', '#ef4444', '#a855f7', '#22c55
 export function Settings() {
   const { user, signOut } = useAuth();
   const { profile, updateProfile } = useProfile();
-  const { categories, addCategory } = useCategories();
+  const { categories, addCategory, deleteCategory } = useCategories();
   const { budgets, setBudget } = useBudgets();
 
   const [showBudgets, setShowBudgets] = useState(false);
@@ -32,6 +32,11 @@ export function Settings() {
     await addCategory({ name: newCategoryName.trim(), icon: newCategoryIcon, color: newCategoryColor });
     setNewCategoryName('');
     setAddingCategory(false);
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"? Transactions using it will become uncategorized.`)) return;
+    await deleteCategory(id);
   };
 
   return (
@@ -70,12 +75,24 @@ export function Settings() {
 
       <SettingsSection title="Categories">
         <div className="grid grid-cols-4 gap-3 p-4">
-          {categories.map((c) => (
-            <div key={c.id} className="flex flex-col items-center gap-1 text-[11px] font-medium text-slate-600">
-              <CategoryIcon category={c} />
-              <span className="w-full truncate text-center">{c.name}</span>
-            </div>
-          ))}
+          {categories.map((c) => {
+            const deletable = c.user_id === user?.id;
+            return (
+              <div key={c.id} className="relative flex flex-col items-center gap-1 text-[11px] font-medium text-slate-600">
+                <CategoryIcon category={c} />
+                <span className="w-full truncate text-center">{c.name}</span>
+                {deletable && (
+                  <button
+                    onClick={() => handleDeleteCategory(c.id, c.name)}
+                    aria-label={`Delete ${c.name}`}
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <form onSubmit={submitCategory} className="space-y-3 border-t border-slate-100 p-4">
