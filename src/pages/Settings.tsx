@@ -1,5 +1,5 @@
-﻿import { useState, type FormEvent, type ReactNode } from 'react';
-import { Banknote, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Sun, Wallet, X } from 'lucide-react';
+﻿import { useState, type ReactNode } from 'react';
+import { Banknote, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -11,9 +11,8 @@ import { CategoryIcon } from '../components/CategoryIcon';
 import { CardsSection } from '../components/CardsSection';
 import { BudgetSheet } from '../components/BudgetSheet';
 import { SmsAutoLogSheet } from '../components/SmsAutoLogSheet';
-import { ICON_NAMES, getIcon } from '../lib/icons';
-
-const SWATCHES = ['#f97316', '#3b82f6', '#ec4899', '#ef4444', '#a855f7', '#22c55e', '#14b8a6', '#64748b', '#eab308', '#06b6d4'];
+import { AddCategorySheet } from '../components/AddCategorySheet';
+import { CurrencySheet } from '../components/CurrencySheet';
 
 const THEME_OPTIONS = [
   { value: 'light' as const, label: 'Light', icon: Sun },
@@ -32,22 +31,11 @@ export function Settings() {
 
   const [showBudgets, setShowBudgets] = useState(false);
   const [showSmsSheet, setShowSmsSheet] = useState(false);
-
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryIcon, setNewCategoryIcon] = useState(ICON_NAMES[0]);
-  const [newCategoryColor, setNewCategoryColor] = useState(SWATCHES[0]);
-  const [addingCategory, setAddingCategory] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showCurrency, setShowCurrency] = useState(false);
 
   const budgetByCategory = new Map(budgets.map((b) => [b.category_id, b.amount]));
-
-  const submitCategory = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!newCategoryName.trim()) return;
-    setAddingCategory(true);
-    await addCategory({ name: newCategoryName.trim(), icon: newCategoryIcon, color: newCategoryColor });
-    setNewCategoryName('');
-    setAddingCategory(false);
-  };
+  const currency = profile?.currency ?? 'EGP';
 
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!window.confirm(`Delete "${name}"? Transactions using it will become uncategorized.`)) return;
@@ -86,6 +74,7 @@ export function Settings() {
               sublabel="Install Expensely for quick, full-screen access"
               icon={<img src="/pwa-icon.svg" alt="" className="h-9 w-9 rounded-xl" />}
               iconBg=""
+              showChevron={false}
             />
           )}
           {canShowIOSInstructions && (
@@ -140,8 +129,10 @@ export function Settings() {
           iconBg="bg-emerald-50 dark:bg-emerald-500/10"
         />
         <SettingsRow
+          as="button"
+          onClick={() => setShowCurrency(true)}
           label="Currency"
-          value={profile?.currency ?? 'EGP'}
+          value={currency}
           icon={<Banknote size={18} className="text-sky-600 dark:text-sky-400" />}
           iconBg="bg-sky-50 dark:bg-sky-500/10"
         />
@@ -156,12 +147,7 @@ export function Settings() {
       </SettingsSection>
 
       <SettingsSection title="Cards">
-        <CardsSection
-          cards={cards}
-          currency={profile?.currency ?? 'EGP'}
-          onAdd={addCard}
-          onDelete={deleteCard}
-        />
+        <CardsSection cards={cards} currency={currency} onAdd={addCard} onDelete={deleteCard} />
       </SettingsSection>
 
       <SettingsSection title="Categories">
@@ -190,49 +176,16 @@ export function Settings() {
           })}
         </div>
 
-        <form onSubmit={submitCategory} className="space-y-3 border-t border-stone-100 p-4 dark:border-stone-700">
-          <p className="text-xs font-medium text-stone-500 dark:text-stone-400">Add a custom category</p>
-          <input
-            type="text"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="Category name"
-            className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
-          />
-          <div className="flex flex-wrap gap-2">
-            {ICON_NAMES.map((name) => {
-              const Icon = getIcon(name);
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => setNewCategoryIcon(name)}
-                  className={`rounded-lg p-2 transition-all active:scale-90 ${newCategoryIcon === name ? 'bg-brand/10 ring-2 ring-brand' : 'bg-stone-50 dark:bg-stone-700'}`}
-                >
-                  <Icon size={18} className="text-stone-600 dark:text-stone-300" />
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SWATCHES.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setNewCategoryColor(color)}
-                className={`h-7 w-7 rounded-full transition-all active:scale-90 ${newCategoryColor === color ? 'ring-2 ring-offset-2 ring-stone-400 dark:ring-offset-stone-800' : ''}`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
+        <div className="border-t border-stone-100 p-4 dark:border-stone-700">
           <button
-            type="submit"
-            disabled={addingCategory}
-            className="w-full rounded-xl border border-brand py-2.5 font-semibold text-brand transition-transform active:scale-[0.98] disabled:opacity-60"
+            type="button"
+            onClick={() => setShowAddCategory(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 py-2.5 text-sm font-medium text-stone-600 transition-all active:scale-[0.98] dark:border-stone-600 dark:text-stone-300"
           >
-            {addingCategory ? 'Adding…' : 'Add category'}
+            <Plus size={16} />
+            Add a category
           </button>
-        </form>
+        </div>
       </SettingsSection>
 
       {showBudgets && (
@@ -251,6 +204,16 @@ export function Settings() {
           profile={profile}
           onClose={() => setShowSmsSheet(false)}
           onSaveToken={(token) => updateProfile({ sms_token: token })}
+        />
+      )}
+
+      {showAddCategory && <AddCategorySheet onAdd={addCategory} onClose={() => setShowAddCategory(false)} />}
+
+      {showCurrency && (
+        <CurrencySheet
+          currency={currency}
+          onSelect={(code) => updateProfile({ currency: code })}
+          onClose={() => setShowCurrency(false)}
         />
       )}
     </div>

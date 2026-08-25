@@ -1,6 +1,7 @@
-﻿import { CreditCard, X } from 'lucide-react';
+﻿import { useState } from 'react';
+import { CreditCard, Plus, X } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
-import { AddCardForm } from './AddCardForm';
+import { AddCardSheet } from './AddCardSheet';
 import type { CardInput } from '../hooks/useCards';
 import type { Card } from '../types';
 
@@ -15,6 +16,8 @@ export function CardsSection({
   onAdd: (input: CardInput) => Promise<{ error: string | null }>;
   onDelete: (id: string) => Promise<{ error: string | null }>;
 }) {
+  const [showAdd, setShowAdd] = useState(false);
+
   const remove = async (card: Card) => {
     const label = card.last4 ? `${card.name} ••${card.last4}` : card.name;
     if (!window.confirm(`Remove "${label}"? Its transactions are kept but become unassigned.`)) return;
@@ -23,9 +26,15 @@ export function CardsSection({
 
   return (
     <>
-      <div className="space-y-3 p-4">
-        <p className="text-xs font-medium text-stone-500 dark:text-stone-400">Add a card</p>
-        <AddCardForm cards={cards} currency={currency} onAdd={onAdd} />
+      <div className="p-4">
+        <button
+          type="button"
+          onClick={() => setShowAdd(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 py-2.5 text-sm font-medium text-stone-600 transition-all active:scale-[0.98] dark:border-stone-600 dark:text-stone-300"
+        >
+          <Plus size={16} />
+          Add a card
+        </button>
       </div>
 
       {cards.length > 0 && (
@@ -70,6 +79,8 @@ export function CardsSection({
           ))}
         </ul>
       )}
+
+      {showAdd && <AddCardSheet cards={cards} currency={currency} onAdd={onAdd} onClose={() => setShowAdd(false)} />}
     </>
   );
 }
