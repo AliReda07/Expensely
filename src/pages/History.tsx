@@ -9,13 +9,19 @@ import { TransactionRow } from '../components/TransactionRow';
 import { AddTransactionSheet } from '../components/AddTransactionSheet';
 import type { TransactionWithCategory } from '../types';
 
+// Caps the filter row to a first page, same guideline (and same category list)
+// AddTransactionSheet's category grid already applies -- otherwise every category
+// renders as its own pill with no limit.
+const CATEGORY_FILTER_VISIBLE_COUNT = 8;
+
 export function History() {
   const { profile } = useProfile();
   const { categories } = useCategories();
   const { cards } = useCards();
-  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions(categories);
+  const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(categories);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
   const [editing, setEditing] = useState<TransactionWithCategory | null>(null);
 
   const currency = profile?.currency ?? 'EGP';
@@ -53,6 +59,7 @@ export function History() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by note or category"
+          aria-label="Search transactions"
           className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-9 pr-3 text-sm text-stone-800 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
       </div>
@@ -60,16 +67,18 @@ export function History() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setCategoryFilter('all')}
+          aria-pressed={categoryFilter === 'all'}
           className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
             categoryFilter === 'all' ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
           }`}
         >
           All
         </button>
-        {categories.map((c) => (
+        {(showAllCategoryFilters ? categories : categories.slice(0, CATEGORY_FILTER_VISIBLE_COUNT)).map((c) => (
           <button
             key={c.id}
             onClick={() => setCategoryFilter(c.id)}
+            aria-pressed={categoryFilter === c.id}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
               categoryFilter === c.id ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
             }`}
@@ -77,10 +86,41 @@ export function History() {
             {c.name}
           </button>
         ))}
+        {!showAllCategoryFilters && categories.length > CATEGORY_FILTER_VISIBLE_COUNT && (
+          <button
+            onClick={() => setShowAllCategoryFilters(true)}
+            className="shrink-0 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-brand transition-all active:scale-95 dark:bg-stone-800"
+          >
+            +{categories.length - CATEGORY_FILTER_VISIBLE_COUNT} more
+          </button>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">No transactions found.</p>
+      {loading ? (
+        <div className="animate-pulse space-y-3" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-14 rounded-xl bg-stone-100 dark:bg-stone-800" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">
+          {transactions.length === 0 ? (
+            <p>No transactions yet.</p>
+          ) : (
+            <>
+              <p>No transactions match your search{categoryFilter !== 'all' ? ' and filter' : ''}.</p>
+              <button
+                onClick={() => {
+                  setQuery('');
+                  setCategoryFilter('all');
+                }}
+                className="mt-2 font-medium text-brand transition-opacity active:opacity-60"
+              >
+                Clear filters
+              </button>
+            </>
+          )}
+        </div>
       ) : (
         <div className="divide-y divide-stone-100 dark:divide-stone-800">
           {filtered.map((t, i) => (

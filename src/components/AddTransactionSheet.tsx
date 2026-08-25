@@ -84,6 +84,7 @@ export function AddTransactionSheet({
 
   const remove = async (close: () => void) => {
     if (!transaction || !onDelete) return;
+    if (!window.confirm("Delete this transaction? This can't be undone.")) return;
     setDeleting(true);
     const { error } = await onDelete(transaction.id);
     setDeleting(false);
