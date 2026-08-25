@@ -28,7 +28,7 @@ function ProtectedShell({ children }: { children: ReactNode }) {
 
 function App() {
   return (
-    <div className="mx-auto h-full max-w-md bg-stone-50 dark:bg-stone-900">
+    <div className="mx-auto h-full max-w-md bg-stone-50 pt-[env(safe-area-inset-top)] dark:bg-stone-900">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

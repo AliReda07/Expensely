@@ -24,6 +24,14 @@ body,
   color-scheme: dark;
 }
 
+html {
+  background-color: #f8fafc;
+}
+
+html.dark {
+  background-color: #0c0a09;
+}
+
 body {
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;

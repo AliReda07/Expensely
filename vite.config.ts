@@ -16,7 +16,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['pwa-icon.svg'],
+      includeAssets: ['pwa-icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Expensely',
         short_name: 'Expensely',
@@ -27,7 +27,9 @@ export default defineConfig({
         start_url: '/',
         icons: [
           { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml' },
-          { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'pwa-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),

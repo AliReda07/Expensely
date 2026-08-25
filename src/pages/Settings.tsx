@@ -6,6 +6,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
 import { useTheme } from '../contexts/ThemeContext';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { CardsSection } from '../components/CardsSection';
 import { BudgetSheet } from '../components/BudgetSheet';
@@ -27,6 +28,7 @@ export function Settings() {
   const { budgets, setBudget } = useBudgets();
   const { cards, addCard, deleteCard } = useCards();
   const { theme, setTheme } = useTheme();
+  const { canInstall, canShowIOSInstructions, promptInstall } = useInstallPrompt();
 
   const [showBudgets, setShowBudgets] = useState(false);
   const [showSmsSheet, setShowSmsSheet] = useState(false);
@@ -73,6 +75,29 @@ export function Settings() {
           showChevron={false}
         />
       </SettingsSection>
+
+      {(canInstall || canShowIOSInstructions) && (
+        <SettingsSection title="Get the app">
+          {canInstall && (
+            <SettingsRow
+              as="button"
+              onClick={promptInstall}
+              label="Add to Home Screen"
+              sublabel="Install Expensely for quick, full-screen access"
+              icon={<img src="/pwa-icon.svg" alt="" className="h-9 w-9 rounded-xl" />}
+              iconBg=""
+            />
+          )}
+          {canShowIOSInstructions && (
+            <SettingsRow
+              label="Add to Home Screen"
+              sublabel="Tap Share, then 'Add to Home Screen'"
+              icon={<img src="/pwa-icon.svg" alt="" className="h-9 w-9 rounded-xl" />}
+              iconBg=""
+            />
+          )}
+        </SettingsSection>
+      )}
 
       <SettingsSection title="Appearance">
         <div className="p-4">
