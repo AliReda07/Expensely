@@ -10,6 +10,7 @@ import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency, monthRange } from '../lib/format';
+import { NEUTRAL_FALLBACK_COLOR } from '../lib/color';
 
 interface CategoryChartDatum {
   name: string;
@@ -134,7 +135,7 @@ export function Ask() {
     for (const t of transactions) {
       if (t.type !== 'expense') continue;
       const name = t.category?.name ?? 'Other';
-      const color = t.category?.color ?? '#64748b';
+      const color = t.category?.color ?? NEUTRAL_FALLBACK_COLOR;
       const existing = totals.get(name);
       totals.set(name, { name, color, value: (existing?.value ?? 0) + Number(t.amount) });
     }
@@ -356,7 +357,7 @@ export function Ask() {
         <p className="text-sm text-stone-500 dark:text-stone-400">Tell it what happened, it updates your account.</p>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4" role="log" aria-live="polite" aria-atomic="false">
         {messages.map((m, i) =>
           m.role === 'user' ? (
             <div key={i} className="animate-row-in flex justify-end">
@@ -500,6 +501,7 @@ export function Ask() {
             </button>
             <input
               type="text"
+              aria-label="Message"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="e.g. spent 50 on food"

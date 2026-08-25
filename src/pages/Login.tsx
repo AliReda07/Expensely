@@ -31,6 +31,8 @@ export function Login() {
         <input
           type="email"
           required
+          autoComplete="email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
@@ -39,6 +41,8 @@ export function Login() {
         <input
           type="password"
           required
+          autoComplete="current-password"
+          aria-label="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"

@@ -128,6 +128,7 @@ function CategoryBudgetRow({
       <input
         type="text"
         inputMode="decimal"
+        aria-label={`${categoryName} budget`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="No limit"

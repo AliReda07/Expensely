@@ -166,7 +166,7 @@ export function Settings() {
                   <button
                     onClick={() => handleDeleteCategory(c.id, c.name)}
                     aria-label={`Delete ${c.name}`}
-                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow transition-transform active:scale-90"
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow transition-transform active:scale-90 after:absolute after:-inset-2.5 after:content-['']"
                   >
                     <X size={13} />
                   </button>

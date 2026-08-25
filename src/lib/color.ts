@@ -1,3 +1,9 @@
+// Neutral fallback for anything without its own color (an uncategorized transaction,
+// the "Cash" bucket, a missing category). Stone-500, matching the app's warm dark-mode
+// scale -- not Tailwind's cold slate-500 (#64748b), which a few call sites had drifted
+// to independently.
+export const NEUTRAL_FALLBACK_COLOR = '#78716c';
+
 // Green -> amber -> red as a ratio approaches (and passes) 100%, interpolated smoothly
 // rather than snapping between fixed bands. Shared by BudgetProgress (spend vs. budget)
 // and BalanceCard (credit balance vs. limit).

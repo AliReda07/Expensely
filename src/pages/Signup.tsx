@@ -52,6 +52,8 @@ export function Signup() {
         <input
           type="email"
           required
+          autoComplete="email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
@@ -61,6 +63,8 @@ export function Signup() {
           type="password"
           required
           minLength={6}
+          autoComplete="new-password"
+          aria-label="Password, minimum 6 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password (min. 6 characters)"

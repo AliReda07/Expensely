@@ -9,7 +9,7 @@ import { useBudgets } from '../hooks/useBudgets';
 import { useTheme } from '../contexts/ThemeContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { formatCurrency, monthRange } from '../lib/format';
-import { progressColor } from '../lib/color';
+import { NEUTRAL_FALLBACK_COLOR, progressColor } from '../lib/color';
 
 const TREND_MONTHS = 6;
 const LEGEND_VISIBLE_COUNT = 8;
@@ -62,7 +62,7 @@ export function Insights() {
         return {
           name,
           value,
-          color: match?.category?.color ?? '#78716c',
+          color: match?.category?.color ?? NEUTRAL_FALLBACK_COLOR,
           categoryId: match?.category?.id ?? null,
         };
       })
@@ -90,7 +90,7 @@ export function Insights() {
       value: byCard.get(c.id) ?? 0,
     }));
     if (cash > 0 || rows.length === 0) {
-      rows.push({ key: 'cash', name: 'Cash', last4: null, color: '#64748b', value: cash });
+      rows.push({ key: 'cash', name: 'Cash', last4: null, color: NEUTRAL_FALLBACK_COLOR, value: cash });
     }
     return rows.sort((a, b) => b.value - a.value);
   }, [monthExpenses, cards]);
