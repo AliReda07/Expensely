@@ -15,7 +15,13 @@ export function BottomNav() {
   );
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-900/95">
+    // Promoted to its own compositor layer up front (translateZ + will-change) --
+    // without this, WebKit can flash a fixed, backdrop-blurred element solid
+    // black and briefly mis-position it while the page is scrolling.
+    <nav
+      className="fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-900/95"
+      style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', willChange: 'transform' }}
+    >
       <ul className="relative flex justify-around">
         {activeIndex >= 0 && (
           <span
