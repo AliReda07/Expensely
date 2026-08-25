@@ -8,6 +8,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency, monthRange } from '../lib/format';
 import { NEUTRAL_FALLBACK_COLOR } from '../lib/color';
@@ -39,28 +40,6 @@ const LOG_INTENT_PATTERN = /\b(spent|spend|paid|pay(?:ing)?|bought|buy|purchase[
 
 function looksLikeLogCommand(text: string) {
   return LOG_INTENT_PATTERN.test(text) && parseFirstAmount(text) !== null;
-}
-
-interface SpeechRecognitionResultLike {
-  transcript: string;
-}
-interface SpeechRecognitionLike extends EventTarget {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: { results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>> }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-}
-
-function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
-  const w = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
 const NUMBER_PATTERN = /\d+(?:,\d{3})*(?:\.\d+)?/g;
@@ -201,17 +180,25 @@ export function Ask() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [listening, setListening] = useState(false);
-  const [recordingMs, setRecordingMs] = useState(0);
   const [voiceUnsupportedNotice, setVoiceUnsupportedNotice] = useState(false);
   const voiceNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceBaseInputRef = useRef('');
   const listEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const recordingStartRef = useRef(0);
-  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cancelledRef = useRef(false);
 
-  const voiceSupported = typeof window !== 'undefined' && Boolean(getSpeechRecognitionCtor());
+  const handleTranscript = (text: string) => {
+    const base = voiceBaseInputRef.current;
+    setInput(text ? (base ? `${base} ${text}` : text) : base);
+  };
+
+  const {
+    listening,
+    recordingMs,
+    voiceError,
+    voiceSupported,
+    startListening,
+    stopListening,
+    cancelRecording,
+  } = useVoiceInput({ onTranscript: handleTranscript });
 
   const quickReplies = [
     'How much did I spend this month?',
@@ -222,19 +209,16 @@ export function Ask() {
 
   useEffect(() => {
     return () => {
-      recognitionRef.current?.stop();
-      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
       if (voiceNoticeTimeoutRef.current) clearTimeout(voiceNoticeTimeoutRef.current);
     };
   }, []);
 
   const toggleListening = () => {
     if (listening) {
-      recognitionRef.current?.stop();
+      stopListening();
       return;
     }
-    const Ctor = getSpeechRecognitionCtor();
-    if (!Ctor) {
+    if (!voiceSupported) {
       // A disabled button can't receive a tap at all, so a browser without
       // SpeechRecognition (most iOS Safari versions, notably) got a permanently
       // dead-looking mic with only a `title` tooltip that never fires on touch.
@@ -244,41 +228,9 @@ export function Ask() {
       voiceNoticeTimeoutRef.current = setTimeout(() => setVoiceUnsupportedNotice(false), 3000);
       return;
     }
-
-    cancelledRef.current = false;
-    const recognition = new Ctor();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      if (cancelledRef.current) return;
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => (prev.trim() ? `${prev.trim()} ${transcript}` : transcript));
-    };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => {
-      setListening(false);
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-        recordingIntervalRef.current = null;
-      }
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
-    setListening(true);
-    recordingStartRef.current = Date.now();
-    setRecordingMs(0);
-    recordingIntervalRef.current = setInterval(() => {
-      setRecordingMs(Date.now() - recordingStartRef.current);
-    }, 200);
-  };
-
-  // "Cancel" discards whatever gets transcribed instead of dropping it into the
-  // input -- the mic can be tapped by accident, and a stray transcript silently
-  // appearing in a box that sends financial commands is worse than doing nothing.
-  const cancelRecording = () => {
-    cancelledRef.current = true;
-    recognitionRef.current?.stop();
+    voiceBaseInputRef.current = input.trim();
+    setError(null);
+    startListening();
   };
 
   const sendMessage = async (text: string) => {
@@ -349,6 +301,8 @@ export function Ask() {
     e.preventDefault();
     void sendMessage(input.trim());
   };
+
+  const displayError = error ?? voiceError;
 
   return (
     <div className="flex h-full flex-col pb-16">
@@ -422,7 +376,7 @@ export function Ask() {
             </div>
           </div>
         )}
-        {error && <p className="text-center text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {displayError && <p className="text-center text-xs text-red-600 dark:text-red-400">{displayError}</p>}
         <div ref={listEndRef} />
       </div>
 
