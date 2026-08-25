@@ -1,18 +1,16 @@
 ﻿import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, SlidersHorizontal } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useCards } from '../hooks/useCards';
 import { useTransactions } from '../hooks/useTransactions';
 import { TransactionRow } from '../components/TransactionRow';
 import { AddTransactionSheet } from '../components/AddTransactionSheet';
+import { TransactionFilterSheet, type TransactionFilters } from '../components/TransactionFilterSheet';
 import type { TransactionWithCategory } from '../types';
 
-// Caps the filter row to a first page, same guideline (and same category list)
-// AddTransactionSheet's category grid already applies -- otherwise every category
-// renders as its own pill with no limit.
-const CATEGORY_FILTER_VISIBLE_COUNT = 8;
+const EMPTY_FILTERS: TransactionFilters = { categoryId: 'all', cardId: 'all', dateFrom: '', dateTo: '' };
 
 export function History() {
   const { profile } = useProfile();
@@ -20,15 +18,25 @@ export function History() {
   const { cards } = useCards();
   const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(categories);
   const [query, setQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
+  const [filters, setFilters] = useState<TransactionFilters>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
   const [editing, setEditing] = useState<TransactionWithCategory | null>(null);
 
   const currency = profile?.currency ?? 'EGP';
+  const activeFilterCount = [
+    filters.categoryId !== 'all',
+    filters.cardId !== 'all',
+    filters.dateFrom !== '',
+    filters.dateTo !== '',
+  ].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
-      if (categoryFilter !== 'all' && t.category_id !== categoryFilter) return false;
+      if (filters.categoryId !== 'all' && t.category_id !== filters.categoryId) return false;
+      if (filters.cardId === 'cash' && t.card_id !== null) return false;
+      if (filters.cardId !== 'all' && filters.cardId !== 'cash' && t.card_id !== filters.cardId) return false;
+      if (filters.dateFrom && t.date < filters.dateFrom) return false;
+      if (filters.dateTo && t.date > filters.dateTo) return false;
       if (query.trim()) {
         const q = query.trim().toLowerCase();
         const matchesNote = t.note?.toLowerCase().includes(q);
@@ -37,7 +45,7 @@ export function History() {
       }
       return true;
     });
-  }, [transactions, query, categoryFilter]);
+  }, [transactions, query, filters]);
 
   return (
     <div className="h-full space-y-4 overflow-y-auto px-4 pb-24 pt-6">
@@ -52,48 +60,30 @@ export function History() {
         <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Transactions</h1>
       </div>
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-stone-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by note or category"
-          aria-label="Search transactions"
-          className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-9 pr-3 text-sm text-stone-800 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
-        />
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-stone-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by note or category"
+            aria-label="Search transactions"
+            className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-9 pr-3 text-sm text-stone-800 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
+          />
+        </div>
         <button
-          onClick={() => setCategoryFilter('all')}
-          aria-pressed={categoryFilter === 'all'}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-            categoryFilter === 'all' ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
-          }`}
+          onClick={() => setShowFilters(true)}
+          aria-label="Filter transactions"
+          className="relative shrink-0 rounded-xl border border-stone-200 bg-white p-2.5 text-stone-600 transition-all active:scale-95 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
         >
-          All
+          <SlidersHorizontal size={18} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-white">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
-        {(showAllCategoryFilters ? categories : categories.slice(0, CATEGORY_FILTER_VISIBLE_COUNT)).map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setCategoryFilter(c.id)}
-            aria-pressed={categoryFilter === c.id}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-              categoryFilter === c.id ? 'bg-brand text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
-        {!showAllCategoryFilters && categories.length > CATEGORY_FILTER_VISIBLE_COUNT && (
-          <button
-            onClick={() => setShowAllCategoryFilters(true)}
-            className="shrink-0 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-brand transition-all active:scale-95 dark:bg-stone-800"
-          >
-            +{categories.length - CATEGORY_FILTER_VISIBLE_COUNT} more
-          </button>
-        )}
       </div>
 
       {loading ? (
@@ -108,11 +98,11 @@ export function History() {
             <p>No transactions yet.</p>
           ) : (
             <>
-              <p>No transactions match your search{categoryFilter !== 'all' ? ' and filter' : ''}.</p>
+              <p>No transactions match your search{activeFilterCount > 0 ? ' and filters' : ''}.</p>
               <button
                 onClick={() => {
                   setQuery('');
-                  setCategoryFilter('all');
+                  setFilters(EMPTY_FILTERS);
                 }}
                 className="mt-2 font-medium text-brand transition-opacity active:opacity-60"
               >
@@ -140,6 +130,16 @@ export function History() {
           onAdd={addTransaction}
           onUpdate={updateTransaction}
           onDelete={deleteTransaction}
+        />
+      )}
+
+      {showFilters && (
+        <TransactionFilterSheet
+          categories={categories}
+          cards={cards}
+          filters={filters}
+          onChange={setFilters}
+          onClose={() => setShowFilters(false)}
         />
       )}
     </div>
