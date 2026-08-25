@@ -38,14 +38,37 @@ describe('BalanceCard', () => {
 
     it('calls onSave with the entered number and exits edit mode on success', async () => {
       const onSave = vi.fn().mockResolvedValue({ error: null });
+      // 250 -> 260 is under the large-change threshold, so this shouldn't prompt.
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      render(<BalanceCard balance={250} currency="EGP" onSave={onSave} />);
+      await userEvent.click(screen.getByLabelText('Edit balance'));
+      const input = screen.getByRole('textbox');
+      await userEvent.clear(input);
+      await userEvent.type(input, '260');
+      await userEvent.click(screen.getByLabelText('Save balance'));
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(onSave).toHaveBeenCalledWith(260);
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      confirmSpy.mockRestore();
+    });
+
+    it('asks for confirmation before saving a large change, and respects the answer', async () => {
+      const onSave = vi.fn().mockResolvedValue({ error: null });
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       render(<BalanceCard balance={250} currency="EGP" onSave={onSave} />);
       await userEvent.click(screen.getByLabelText('Edit balance'));
       const input = screen.getByRole('textbox');
       await userEvent.clear(input);
       await userEvent.type(input, '500');
       await userEvent.click(screen.getByLabelText('Save balance'));
+      expect(confirmSpy).toHaveBeenCalledOnce();
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+
+      confirmSpy.mockReturnValue(true);
+      await userEvent.click(screen.getByLabelText('Save balance'));
       expect(onSave).toHaveBeenCalledWith(500);
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      confirmSpy.mockRestore();
     });
 
     it('shows an error and stays in edit mode when onSave fails', async () => {

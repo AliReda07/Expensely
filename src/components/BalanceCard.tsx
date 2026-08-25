@@ -1,6 +1,12 @@
 ﻿import { useState, type ReactNode } from 'react';
 import { Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
+import { progressColor } from '../lib/color';
+
+// A change this large relative to the current balance gets a confirmation step before
+// saving, since this input silently rewrites the stored starting balance rather than
+// logging a transaction -- a typo here has no undo.
+const LARGE_CHANGE_RATIO = 0.2;
 
 export interface AccountOption {
   key: string;
@@ -19,6 +25,11 @@ export function BalanceCard({
   variant = 'asset',
   onSave,
   accountPicker,
+  /** For a liability card with a known credit limit: % of that limit currently owed
+   *  (0-100). Colors the card along the same green->amber->red scale budgets use,
+   *  instead of a flat red for any amount owed. Omitted (e.g. no limit on file, or an
+   *  asset gone negative) falls back to a flat red for "this is bad." */
+  liabilityPct,
 }: {
   balance: number;
   currency: string;
@@ -32,6 +43,7 @@ export function BalanceCard({
     selected: string;
     onSelect: (key: string) => void;
   };
+  liabilityPct?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
@@ -57,6 +69,16 @@ export function BalanceCard({
       setError('Enter a valid number');
       return;
     }
+    const delta = Math.abs(amount - balance);
+    const isLargeChange = delta > Math.max(Math.abs(balance), 1) * LARGE_CHANGE_RATIO;
+    if (
+      isLargeChange &&
+      !window.confirm(
+        `Set balance to ${formatCurrency(amount, currency)}? This adjusts your starting balance -- it won't add a transaction.`,
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     const result = await onSave?.(amount);
     setSaving(false);
@@ -68,6 +90,13 @@ export function BalanceCard({
   };
 
   const isNegative = variant === 'liability' ? balance > 0 : balance < 0;
+  // With a known limit, the danger gradient scales along the same green->amber->red
+  // ramp budgets use, so "owe a little, plenty of headroom" reads calmer than "over
+  // the limit" instead of both getting an identical alarm-red card.
+  const liabilityGradient =
+    liabilityPct != null
+      ? `linear-gradient(to bottom right, ${progressColor(Math.max(0, liabilityPct - 15))}, ${progressColor(Math.min(100, liabilityPct + 15))})`
+      : undefined;
 
   return (
     <div
@@ -83,9 +112,10 @@ export function BalanceCard({
       />
       <div
         aria-hidden="true"
-        className={`absolute inset-0 overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-red-700 transition-opacity duration-500 ${
-          isNegative ? 'opacity-100' : 'opacity-0'
-        }`}
+        style={liabilityGradient ? { backgroundImage: liabilityGradient } : undefined}
+        className={`absolute inset-0 overflow-hidden rounded-2xl transition-opacity duration-500 ${
+          liabilityGradient ? '' : 'bg-gradient-to-br from-red-500 to-red-700'
+        } ${isNegative ? 'opacity-100' : 'opacity-0'}`}
       />
 
       <div className="relative">
@@ -154,30 +184,33 @@ export function BalanceCard({
         </div>
 
         {editing ? (
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="text"
-              inputMode="decimal"
-              autoFocus
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="w-full min-w-0 rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold tracking-tight tabular-nums text-white outline-none placeholder:text-white/50"
-            />
-            <button
-              onClick={save}
-              disabled={saving}
-              aria-label="Save balance"
-              className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90 disabled:opacity-60"
-            >
-              <Check size={18} />
-            </button>
-            <button
-              onClick={cancel}
-              aria-label="Cancel editing balance"
-              className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90"
-            >
-              <X size={18} />
-            </button>
+          <div className="mt-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                inputMode="decimal"
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className="w-full min-w-0 rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold tracking-tight tabular-nums text-white outline-none placeholder:text-white/50"
+              />
+              <button
+                onClick={save}
+                disabled={saving}
+                aria-label="Save balance"
+                className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90 disabled:opacity-60"
+              >
+                <Check size={18} />
+              </button>
+              <button
+                onClick={cancel}
+                aria-label="Cancel editing balance"
+                className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-white/70">Adjusts your starting balance -- this won't add a transaction.</p>
           </div>
         ) : (
           <>

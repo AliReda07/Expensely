@@ -20,16 +20,21 @@ import type { Card } from '../types';
 type SelectedAccount = 'total' | 'cash' | string;
 
 export function Home() {
-  const { profile, updateProfile } = useProfile();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { categories } = useCategories();
   const { budgets, setBudget } = useBudgets();
-  const { cards, addCard, updateCard, refetch: refetchCards } = useCards();
+  const { cards, loading: cardsLoading, addCard, updateCard, refetch: refetchCards } = useCards();
   const {
     balance,
     cashBalance,
     balanceByCard,
+    loading: balanceLoading,
     refetch: refetchBalance,
   } = useBalance(profile?.starting_balance, cards);
+  // Every one of these starts at a real-looking default (0 / null / []) before its
+  // first fetch resolves -- without this, the hero would flash "EGP 0.00" on every
+  // open, which for a money app reads as "did something go wrong" for a beat.
+  const initialLoading = profileLoading || cardsLoading || balanceLoading;
   const [showAdd, setShowAdd] = useState(false);
   const [showBudgetSheet, setShowBudgetSheet] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -99,6 +104,7 @@ export function Home() {
   let heroSublabel: string | undefined;
   let heroVariant: 'asset' | 'liability' = 'asset';
   let heroOnSave: ((next: number) => Promise<{ error: string | null }>) | undefined = handleBalanceEdit;
+  let heroLiabilityPct: number | undefined;
 
   const accountOptions: AccountOption[] = [
     { key: 'total', label: 'Total balance', icon: <Layers size={14} /> },
@@ -121,38 +127,50 @@ export function Home() {
       heroVariant = selectedCard.type === 'credit' ? 'liability' : 'asset';
       heroOnSave = (next) => handleCardBalanceEdit(selectedCard, next);
       if (selectedCard.type === 'credit' && selectedCard.credit_limit != null) {
-        const available = Number(selectedCard.credit_limit) - heroBalance;
-        heroSublabel = `${formatCurrency(available, currency)} available of ${formatCurrency(Number(selectedCard.credit_limit), currency)} limit`;
+        const limit = Number(selectedCard.credit_limit);
+        const available = limit - heroBalance;
+        heroSublabel = `${formatCurrency(available, currency)} available of ${formatCurrency(limit, currency)} limit`;
+        heroLiabilityPct = limit > 0 ? Math.max(0, Math.min(100, (heroBalance / limit) * 100)) : 100;
       }
     }
   }
 
   return (
     <div className="h-full space-y-6 overflow-y-auto px-4 pb-28 pt-6">
-      {/* Keying on the selection remounts the card, so its edit/error state never
-          leaks between accounts when switching. */}
-      <BalanceCard
-        key={resolvedAccount}
-        balance={heroBalance}
-        currency={currency}
-        label={heroLabel}
-        sublabel={heroSublabel}
-        variant={heroVariant}
-        onSave={heroOnSave}
-        accountPicker={hasCards ? { options: accountOptions, selected: resolvedAccount, onSelect: setSelectedAccount } : undefined}
-      />
+      {initialLoading ? (
+        <div className="animate-pulse space-y-4" aria-hidden="true">
+          <div className="h-[104px] rounded-2xl bg-stone-200 dark:bg-stone-800" />
+          <div className="h-16 rounded-xl bg-stone-200 dark:bg-stone-800" />
+        </div>
+      ) : (
+        <>
+          {/* Keying on the selection remounts the card, so its edit/error state never
+              leaks between accounts when switching. */}
+          <BalanceCard
+            key={resolvedAccount}
+            balance={heroBalance}
+            currency={currency}
+            label={heroLabel}
+            sublabel={heroSublabel}
+            variant={heroVariant}
+            onSave={heroOnSave}
+            liabilityPct={heroLiabilityPct}
+            accountPicker={hasCards ? { options: accountOptions, selected: resolvedAccount, onSelect: setSelectedAccount } : undefined}
+          />
 
-      <CardBalances
-        cards={cards}
-        balanceByCard={balanceByCard}
-        cashBalance={cashBalance}
-        spentByCard={spentByCard}
-        cashSpent={cashSpent}
-        currency={currency}
-        selected={resolvedAccount}
-        onSelect={setSelectedAccount}
-        onAddCard={() => setShowAddCard(true)}
-      />
+          <CardBalances
+            cards={cards}
+            balanceByCard={balanceByCard}
+            cashBalance={cashBalance}
+            spentByCard={spentByCard}
+            cashSpent={cashSpent}
+            currency={currency}
+            selected={resolvedAccount}
+            onSelect={setSelectedAccount}
+            onAddCard={() => setShowAddCard(true)}
+          />
+        </>
+      )}
 
       <div>
         <div className="mb-1 flex items-center justify-end">
