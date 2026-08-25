@@ -1,8 +1,8 @@
 import type { ElementType } from 'react';
 
 /**
- * The "Expensely" brand mark, with the leading E swapped for € -- close enough
- * in shape to read as a stylized E while doubling as a currency pun. The euro
+ * The "Expensely" brand mark, with the leading E swapped for £ -- close enough
+ * in shape to read as a stylized E while doubling as a currency pun. The pound
  * glyph is visual only; screen readers still get the real word via aria-label.
  */
 export function Wordmark({
@@ -14,7 +14,7 @@ export function Wordmark({
 }) {
   return (
     <Tag aria-label="Expensely" className={className}>
-      <span aria-hidden="true">€xpensely</span>
+      <span aria-hidden="true">£xpensely</span>
     </Tag>
   );
 }
