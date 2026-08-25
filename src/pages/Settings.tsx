@@ -55,7 +55,7 @@ export function Settings() {
   };
 
   return (
-    <div className="min-h-full space-y-6 px-4 pb-24 pt-6">
+    <div className="h-full space-y-6 overflow-y-auto px-4 pb-24 pt-6">
       <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Settings</h1>
 
       <SettingsSection title="Account">

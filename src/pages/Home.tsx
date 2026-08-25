@@ -128,7 +128,7 @@ export function Home() {
   }
 
   return (
-    <div className="space-y-6 px-4 pb-28 pt-6">
+    <div className="h-full space-y-6 overflow-y-auto px-4 pb-28 pt-6">
       {/* Keying on the selection remounts the card, so its edit/error state never
           leaks between accounts when switching. */}
       <BalanceCard

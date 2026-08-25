@@ -14,6 +14,12 @@ html,
 body,
 #root {
   height: 100%;
+  /* Pages scroll themselves (each page root is h-full overflow-y-auto) instead
+     of the document scrolling. Real document/body scrolling makes mobile
+     browsers dynamically resize the viewport as their address bar collapses,
+     which makes anything `position: fixed` (the bottom nav, its active-tab
+     indicator) visibly jump and repaint mid-scroll. */
+  overflow: hidden;
 }
 
 :root {

@@ -34,7 +34,7 @@ export function History() {
   }, [transactions, query, categoryFilter]);
 
   return (
-    <div className="space-y-4 px-4 pb-24 pt-6">
+    <div className="h-full space-y-4 overflow-y-auto px-4 pb-24 pt-6">
       <div className="flex items-center gap-3">
         <Link
           to="/"
