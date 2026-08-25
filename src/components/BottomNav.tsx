@@ -1,4 +1,4 @@
-﻿import { NavLink, useLocation } from 'react-router-dom';
+﻿import { NavLink } from 'react-router-dom';
 import { Home, MessageCircle, PieChart, Settings } from 'lucide-react';
 
 const items = [
@@ -9,27 +9,12 @@ const items = [
 ];
 
 export function BottomNav() {
-  const location = useLocation();
-  const activeIndex = items.findIndex(({ to }) =>
-    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to),
-  );
-
   return (
-    // Promoted to its own compositor layer up front (translateZ + will-change) --
-    // without this, WebKit can flash a fixed, backdrop-blurred element solid
-    // black and briefly mis-position it while the page is scrolling.
     <nav
       className="fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-900/95"
       style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', willChange: 'transform' }}
     >
-      <ul className="relative flex justify-around">
-        {activeIndex >= 0 && (
-          <span
-            className="absolute top-0 h-[2.5px] rounded-b-full bg-brand transition-transform duration-300 ease-out"
-            style={{ width: `${100 / items.length}%`, transform: `translateX(${activeIndex * 100}%)` }}
-            aria-hidden="true"
-          />
-        )}
+      <ul className="flex justify-around">
         {items.map(({ to, label, icon: Icon }) => (
           <li key={to} className="flex-1">
             <NavLink
