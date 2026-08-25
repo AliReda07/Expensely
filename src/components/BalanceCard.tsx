@@ -126,7 +126,7 @@ export function BalanceCard({
                 type="button"
                 onClick={() => setPickerOpen((o) => !o)}
                 aria-expanded={pickerOpen}
-                className="-m-1 flex items-center gap-1 rounded-lg p-1 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-sm font-medium text-white/90 transition-colors active:scale-95 hover:bg-white/20"
               >
                 {label}
                 <ChevronDown size={14} className={`transition-transform duration-200 ${pickerOpen ? 'rotate-180' : ''}`} />

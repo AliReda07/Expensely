@@ -5,6 +5,12 @@ import { Sheet } from './Sheet';
 import type { Card, Category, TransactionType, TransactionWithCategory } from '../types';
 import type { TransactionInput } from '../hooks/useTransactions';
 
+// Caps on how many options show before a "more" toggle -- keeps the initial decision
+// within the ~4-item working-memory guideline (rounded up to fill the 4-column category
+// grid's first two rows) instead of dumping every category/card on screen at once.
+const CATEGORY_VISIBLE_COUNT = 8;
+const CARD_VISIBLE_COUNT = 4;
+
 export function AddTransactionSheet({
   categories,
   cards = [],
@@ -23,6 +29,9 @@ export function AddTransactionSheet({
   onDelete?: (id: string) => Promise<{ error: string | null }>;
 }) {
   const isEditing = Boolean(transaction);
+  const expenseCategories = categories.filter((c) => c.name !== 'Income');
+  const incomeCategory = categories.find((c) => c.name === 'Income') ?? null;
+
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
   const [categoryId, setCategoryId] = useState<string | null>(transaction?.category_id ?? null);
@@ -32,9 +41,15 @@ export function AddTransactionSheet({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const expenseCategories = categories.filter((c) => c.name !== 'Income');
-  const incomeCategory = categories.find((c) => c.name === 'Income') ?? null;
+  // Both grids default to a capped first page so a growing category/card list doesn't
+  // turn "pick one" into a wall of options -- but if we're editing a transaction whose
+  // category or card already lives past the fold, start expanded so it's visible.
+  const [showAllCategories, setShowAllCategories] = useState(
+    () => expenseCategories.findIndex((c) => c.id === transaction?.category_id) >= CATEGORY_VISIBLE_COUNT,
+  );
+  const [showAllCards, setShowAllCards] = useState(
+    () => cards.findIndex((c) => c.id === transaction?.card_id) >= CARD_VISIBLE_COUNT,
+  );
 
   const submit = async (close: () => void) => {
     const numericAmount = Number(amount);
@@ -143,7 +158,7 @@ export function AddTransactionSheet({
             <div className="mb-4">
               <span className="mb-2 block text-xs font-medium text-stone-500 dark:text-stone-400">Category</span>
               <div className="grid grid-cols-4 gap-3">
-                {expenseCategories.map((c) => (
+                {(showAllCategories ? expenseCategories : expenseCategories.slice(0, CATEGORY_VISIBLE_COUNT)).map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setCategoryId(c.id)}
@@ -156,6 +171,15 @@ export function AddTransactionSheet({
                   </button>
                 ))}
               </div>
+              {!showAllCategories && expenseCategories.length > CATEGORY_VISIBLE_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories(true)}
+                  className="mt-2 text-xs font-medium text-brand transition-opacity active:opacity-60"
+                >
+                  Show {expenseCategories.length - CATEGORY_VISIBLE_COUNT} more
+                </button>
+              )}
             </div>
           )}
 
@@ -174,7 +198,7 @@ export function AddTransactionSheet({
                 >
                   Cash
                 </button>
-                {cards.map((c) => (
+                {(showAllCards ? cards : cards.slice(0, CARD_VISIBLE_COUNT)).map((c) => (
                   <button
                     key={c.id}
                     type="button"
@@ -190,6 +214,15 @@ export function AddTransactionSheet({
                     {c.last4 && <span className="tabular-nums opacity-80">••{c.last4}</span>}
                   </button>
                 ))}
+                {!showAllCards && cards.length > CARD_VISIBLE_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCards(true)}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium text-brand transition-opacity active:opacity-60"
+                  >
+                    +{cards.length - CARD_VISIBLE_COUNT} more
+                  </button>
+                )}
               </div>
             </div>
           )}
