@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
+import { CheckCircle2, Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
@@ -21,10 +21,24 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   chart?: CategoryChartDatum[];
+  /** Set on assistant replies that came from a message which looked like it logged a
+   *  transaction, so a reply that just changed your data reads differently from one
+   *  that only answered a question. */
+  kind?: 'log';
 }
 
 const TOP_CATEGORIES_PATTERN = /top\s+categor/i;
 const AFFORD_PATTERN = /\bafford\b/i;
+// A message mentioning a spending/income verb alongside an amount is treated as a
+// logging command even if it also contains "afford" or "top categories" -- otherwise
+// a compound message like "I can't afford to forget: spent 200 on rent" gets fully
+// answered by the affordability shortcut and the rent expense never reaches the
+// backend at all, silently.
+const LOG_INTENT_PATTERN = /\b(spent|spend|paid|pay(?:ing)?|bought|buy|purchase[ds]?|add(?:ed)?\s+income|earned|received|got paid)\b/i;
+
+function looksLikeLogCommand(text: string) {
+  return LOG_INTENT_PATTERN.test(text) && parseFirstAmount(text) !== null;
+}
 
 interface SpeechRecognitionResultLike {
   transcript: string;
@@ -93,19 +107,21 @@ export function Ask() {
   const { profile } = useProfile();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  // Matches Insights' stone dark-mode scale instead of Recharts' default slate --
+  // otherwise the tooltip renders visibly blue-tinted on top of its own stone-800 card.
   const chartTooltipStyle = {
-    background: isDark ? '#1e293b' : '#ffffff',
-    border: `1px solid ${isDark ? '#334155' : '#f1f5f9'}`,
+    background: isDark ? '#292524' : '#ffffff',
+    border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`,
     borderRadius: 8,
-    color: isDark ? '#f1f5f9' : '#1e293b',
+    color: isDark ? '#f5f5f4' : '#1c1917',
     fontSize: 13,
   };
   const currency = profile?.currency ?? 'EGP';
 
   const { start: monthStart, end: monthEnd } = monthRange(new Date());
-  const { transactions } = useTransactions(categories, { start: monthStart, end: monthEnd });
+  const { transactions, refetch: refetchTransactions } = useTransactions(categories, { start: monthStart, end: monthEnd });
   const { cards } = useCards();
-  const { balance } = useBalance(profile?.starting_balance, cards);
+  const { balance, refetch: refetchBalance } = useBalance(profile?.starting_balance, cards);
   const { budgets } = useBudgets();
 
   const monthExpenseTotal = useMemo(
@@ -186,6 +202,8 @@ export function Ask() {
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
+  const [voiceUnsupportedNotice, setVoiceUnsupportedNotice] = useState(false);
+  const voiceNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const recordingStartRef = useRef(0);
@@ -205,6 +223,7 @@ export function Ask() {
     return () => {
       recognitionRef.current?.stop();
       if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      if (voiceNoticeTimeoutRef.current) clearTimeout(voiceNoticeTimeoutRef.current);
     };
   }, []);
 
@@ -214,7 +233,16 @@ export function Ask() {
       return;
     }
     const Ctor = getSpeechRecognitionCtor();
-    if (!Ctor) return;
+    if (!Ctor) {
+      // A disabled button can't receive a tap at all, so a browser without
+      // SpeechRecognition (most iOS Safari versions, notably) got a permanently
+      // dead-looking mic with only a `title` tooltip that never fires on touch.
+      // This stays tappable and explains itself instead.
+      setVoiceUnsupportedNotice(true);
+      if (voiceNoticeTimeoutRef.current) clearTimeout(voiceNoticeTimeoutRef.current);
+      voiceNoticeTimeoutRef.current = setTimeout(() => setVoiceUnsupportedNotice(false), 3000);
+      return;
+    }
 
     cancelledRef.current = false;
     const recognition = new Ctor();
@@ -259,13 +287,18 @@ export function Ask() {
     setInput('');
     setError(null);
 
-    if (TOP_CATEGORIES_PATTERN.test(text)) {
+    // A message that also looks like a logging command skips the client-side
+    // shortcuts entirely and goes to the backend, even if it happens to contain
+    // "afford" or "top categories" -- see LOG_INTENT_PATTERN above.
+    const isLogCommand = looksLikeLogCommand(text);
+
+    if (!isLogCommand && TOP_CATEGORIES_PATTERN.test(text)) {
       setMessages((prev) => [...prev, topCategoriesReply()]);
       requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
       return;
     }
 
-    if (AFFORD_PATTERN.test(text)) {
+    if (!isLogCommand && AFFORD_PATTERN.test(text)) {
       const amount = parseFirstAmount(text);
       if (amount !== null) {
         setMessages((prev) => [...prev, affordabilityReply(amount, text)]);
@@ -298,7 +331,11 @@ export function Ask() {
       if (invokeError) throw new Error('Assistant is unavailable right now.');
 
       const reply = typeof data?.reply === 'string' ? data.reply : "Done, but I didn't get a reply message.";
-      setMessages((prev) => [...prev, { role: 'assistant', text: reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', text: reply, kind: isLogCommand ? 'log' : undefined }]);
+      // The backend may have just written a transaction -- refetch rather than trust
+      // stale numbers fetched on mount, since a later "can I afford X" in the same
+      // conversation needs the post-write balance, not the one from before this send.
+      await Promise.all([refetchTransactions(), refetchBalance()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -327,10 +364,21 @@ export function Ask() {
             </div>
           ) : (
             <div key={i} className="animate-row-in flex gap-2.5">
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-                <Sparkles size={15} />
+              <div
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                  m.kind === 'log'
+                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                    : 'bg-brand/10 text-brand'
+                }`}
+              >
+                {m.kind === 'log' ? <CheckCircle2 size={15} /> : <Sparkles size={15} />}
               </div>
               <div className="min-w-0 flex-1 pt-1">
+                {m.kind === 'log' && (
+                  <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                    Logged
+                  </p>
+                )}
                 {m.chart && m.chart.length > 0 && (
                   <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-stone-100 bg-white p-2 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30">
                     <ResponsiveContainer width="100%" height="100%">
@@ -340,7 +388,7 @@ export function Ask() {
                           type="category"
                           dataKey="name"
                           width={72}
-                          tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }}
+                          tick={{ fontSize: 11, fill: isDark ? '#a8a29e' : '#78716c' }}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -391,6 +439,12 @@ export function Ask() {
         ))}
       </div>
 
+      {voiceUnsupportedNotice && (
+        <p className="animate-row-in px-4 pt-1.5 text-center text-xs text-stone-500 dark:text-stone-400">
+          Voice input isn't available in this browser.
+        </p>
+      )}
+
       <form onSubmit={send} className="flex items-center gap-2 px-4 pt-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {listening ? (
           <>
@@ -435,9 +489,7 @@ export function Ask() {
             <button
               type="button"
               onClick={toggleListening}
-              disabled={!voiceSupported}
-              title={voiceSupported ? 'Voice input' : 'Voice input not supported on this browser'}
-              aria-label="Start voice input"
+              aria-label={voiceSupported ? 'Start voice input' : 'Voice input not supported'}
               className={`shrink-0 rounded-full p-2.5 transition-all active:scale-90 ${
                 voiceSupported
                   ? 'text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
