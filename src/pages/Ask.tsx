@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Mic, Send, Sparkles } from 'lucide-react';
+import { Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
@@ -60,6 +60,22 @@ function parseFirstAmount(text: string): number | null {
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+function formatDuration(ms: number) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+// Bars get a couple of distinct timings so the waveform reads as organic motion
+// rather than one shape pulsing uniformly -- there's no real audio amplitude behind
+// it (Web Speech API exposes transcripts, not levels), so this is deliberately just
+// a rhythm, not a visualization.
+const WAVEFORM_BARS = Array.from({ length: 24 }, (_, i) => ({
+  delayMs: (i % 6) * 80,
+  durationMs: 700 + (i % 3) * 140,
+}));
 
 function renderWithBoldNumbers(text: string) {
   const parts = text.split(NUMBER_PATTERN);
@@ -169,8 +185,12 @@ export function Ask() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [recordingMs, setRecordingMs] = useState(0);
   const listEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const recordingStartRef = useRef(0);
+  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelledRef = useRef(false);
 
   const voiceSupported = typeof window !== 'undefined' && Boolean(getSpeechRecognitionCtor());
 
@@ -182,7 +202,10 @@ export function Ask() {
   ];
 
   useEffect(() => {
-    return () => recognitionRef.current?.stop();
+    return () => {
+      recognitionRef.current?.stop();
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    };
   }, []);
 
   const toggleListening = () => {
@@ -193,19 +216,40 @@ export function Ask() {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) return;
 
+    cancelledRef.current = false;
     const recognition = new Ctor();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.onresult = (event) => {
+      if (cancelledRef.current) return;
       const transcript = event.results[0][0].transcript;
       setInput((prev) => (prev.trim() ? `${prev.trim()} ${transcript}` : transcript));
     };
     recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    };
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
+    recordingStartRef.current = Date.now();
+    setRecordingMs(0);
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingMs(Date.now() - recordingStartRef.current);
+    }, 200);
+  };
+
+  // "Cancel" discards whatever gets transcribed instead of dropping it into the
+  // input -- the mic can be tapped by accident, and a stray transcript silently
+  // appearing in a box that sends financial commands is worse than doing nothing.
+  const cancelRecording = () => {
+    cancelledRef.current = true;
+    recognitionRef.current?.stop();
   };
 
   const sendMessage = async (text: string) => {
@@ -348,37 +392,77 @@ export function Ask() {
       </div>
 
       <form onSubmit={send} className="flex items-center gap-2 px-4 pt-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <button
-          type="button"
-          onClick={toggleListening}
-          disabled={!voiceSupported}
-          title={voiceSupported ? (listening ? 'Stop listening' : 'Voice input') : 'Voice input not supported on this browser'}
-          aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-          className={`shrink-0 rounded-full p-2.5 transition-all active:scale-90 ${
-            listening
-              ? 'animate-pulse bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
-              : voiceSupported
-                ? 'text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
-                : 'text-stone-300 dark:text-stone-700'
-          }`}
-        >
-          <Mic size={20} />
-        </button>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. spent 50 on food"
-          className="min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
-        />
-        <button
-          type="submit"
-          disabled={sending || !input.trim()}
-          aria-label="Send"
-          className="shrink-0 rounded-full bg-brand p-2.5 text-white transition-transform active:scale-90 disabled:opacity-50 disabled:active:scale-100"
-        >
-          <Send size={18} />
-        </button>
+        {listening ? (
+          <>
+            <button
+              type="button"
+              onClick={cancelRecording}
+              aria-label="Cancel recording"
+              className="shrink-0 rounded-full p-2.5 text-stone-500 transition-all active:scale-90 dark:text-stone-400"
+            >
+              <Trash2 size={20} />
+            </button>
+            <div
+              role="status"
+              aria-label={`Recording, ${formatDuration(recordingMs)} elapsed`}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3.5 py-2.5 dark:border-red-500/30 dark:bg-red-500/10"
+            >
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
+              <div className="flex h-5 flex-1 items-center justify-center gap-[3px] overflow-hidden" aria-hidden="true">
+                {WAVEFORM_BARS.map((bar, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] shrink-0 rounded-full bg-red-400 dark:bg-red-500"
+                    style={{ animation: `voice-bar ${bar.durationMs}ms ease-in-out ${bar.delayMs}ms infinite` }}
+                  />
+                ))}
+              </div>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-red-600 dark:text-red-400">
+                {formatDuration(recordingMs)}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={toggleListening}
+              aria-label="Stop recording"
+              className="shrink-0 rounded-full bg-red-500 p-2.5 text-white transition-transform active:scale-90"
+            >
+              <Square size={16} fill="currentColor" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={!voiceSupported}
+              title={voiceSupported ? 'Voice input' : 'Voice input not supported on this browser'}
+              aria-label="Start voice input"
+              className={`shrink-0 rounded-full p-2.5 transition-all active:scale-90 ${
+                voiceSupported
+                  ? 'text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
+                  : 'text-stone-300 dark:text-stone-700'
+              }`}
+            >
+              <Mic size={20} />
+            </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="e.g. spent 50 on food"
+              className="min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
+            />
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              aria-label="Send"
+              className="shrink-0 rounded-full bg-brand p-2.5 text-white transition-transform active:scale-90 disabled:opacity-50 disabled:active:scale-100"
+            >
+              <Send size={18} />
+            </button>
+          </>
+        )}
       </form>
     </div>
   );
