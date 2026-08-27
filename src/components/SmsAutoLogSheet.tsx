@@ -89,7 +89,11 @@ export function SmsAutoLogSheet({
               <p className="mb-2 text-xs font-medium text-stone-500 dark:text-stone-400">Set up in iOS Shortcuts</p>
               <ol className="mb-2 list-decimal space-y-1.5 pl-4 text-xs text-stone-600 dark:text-stone-400">
                 <li>Open the Shortcuts app → Automation → New Automation → Message.</li>
-                <li>Set "Sender" to your bank's SMS number/name, turn off "Ask Before Running".</li>
+                <li>
+                  Set "Message Contains" to a word every bank text has, e.g. your currency code. One automation
+                  like this can cover every bank you have.
+                </li>
+                <li>Turn off "Ask Before Running".</li>
                 <li>Add action "Get Contents of URL" → paste the link above, Method: POST.</li>
                 <li>Request Body: Text → set it to "Shortcut Input" (the message text).</li>
                 <li>Optionally add "Show Notification" with the URL's response to see the confirmation.</li>
@@ -99,10 +103,23 @@ export function SmsAutoLogSheet({
                 If your bank never mentions the card's last 4 digits
               </p>
               <p className="mb-2 text-xs text-stone-600 dark:text-stone-400">
-                In step 4, use Request Body: JSON instead of Text, with two fields — <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">message</code> set
-                to the message text and <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">sender</code> set to the trigger's Sender
-                variable. Then set that same sender name on the card in Settings → Cards. This only resolves the
-                card when it's the one card you have from that bank.
+                Go to Settings → Cards, edit that card, and fill in "Phrase unique to this bank's SMS" — a short
+                piece of wording that appears in every text from this bank but no other. No changes to Shortcuts
+                needed for this — it's matched against the message text on our end. Only resolves the card when
+                it's the one card you have with that phrase.
+              </p>
+
+              <p className="mb-1.5 mt-4 text-xs font-medium text-stone-500 dark:text-stone-400">
+                Advanced: matching by sender instead of a phrase
+              </p>
+              <p className="mb-2 text-xs text-stone-600 dark:text-stone-400">
+                Only works if your phone's Message automation can actually filter by that bank as a sender — many
+                banks send from an alphanumeric ID rather than a real contact, which iOS often can't filter by at
+                all. If yours can: give that bank its own automation with Sender set to it, use Request Body: JSON
+                with two fields — <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">message</code>{' '}
+                set to the message text and <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">sender</code>{' '}
+                set to any label you type in yourself, e.g. <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">HSBC</code> —
+                then enter that same label as the card's "Bank SMS sender" in Settings → Cards.
               </p>
             </>
           ) : (

@@ -13,6 +13,7 @@ import { BudgetSheet } from '../components/BudgetSheet';
 import { SmsAutoLogSheet } from '../components/SmsAutoLogSheet';
 import { AddCategorySheet } from '../components/AddCategorySheet';
 import { CurrencySheet } from '../components/CurrencySheet';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 
 const THEME_OPTIONS = [
   { value: 'light' as const, label: 'Light', icon: Sun },
@@ -25,7 +26,7 @@ export function Settings() {
   const { profile, updateProfile } = useProfile();
   const { categories, addCategory, deleteCategory } = useCategories();
   const { budgets, setBudget } = useBudgets();
-  const { cards, addCard, deleteCard } = useCards();
+  const { cards, addCard, updateCard, deleteCard } = useCards();
   const { theme, setTheme } = useTheme();
   const { canInstall, canShowIOSInstructions, promptInstall } = useInstallPrompt();
 
@@ -33,14 +34,10 @@ export function Settings() {
   const [showSmsSheet, setShowSmsSheet] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string } | null>(null);
 
   const budgetByCategory = new Map(budgets.map((b) => [b.category_id, b.amount]));
   const currency = profile?.currency ?? 'EGP';
-
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"? Transactions using it will become uncategorized.`)) return;
-    await deleteCategory(id);
-  };
 
   return (
     <div className="h-full space-y-6 overflow-y-auto px-4 pb-24 pt-6">
@@ -147,7 +144,7 @@ export function Settings() {
       </SettingsSection>
 
       <SettingsSection title="Cards">
-        <CardsSection cards={cards} currency={currency} onAdd={addCard} onDelete={deleteCard} />
+        <CardsSection cards={cards} currency={currency} onAdd={addCard} onUpdate={updateCard} onDelete={deleteCard} />
       </SettingsSection>
 
       <SettingsSection title="Categories">
@@ -164,7 +161,7 @@ export function Settings() {
                 <span className="w-full truncate text-center">{c.name}</span>
                 {deletable && (
                   <button
-                    onClick={() => handleDeleteCategory(c.id, c.name)}
+                    onClick={() => setDeletingCategory({ id: c.id, name: c.name })}
                     aria-label={`Delete ${c.name}`}
                     className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow transition-transform active:scale-90 after:absolute after:-inset-2.5 after:content-['']"
                   >
@@ -214,6 +211,15 @@ export function Settings() {
           currency={currency}
           onSelect={(code) => updateProfile({ currency: code })}
           onClose={() => setShowCurrency(false)}
+        />
+      )}
+
+      {deletingCategory && (
+        <ConfirmSheet
+          message={`Delete "${deletingCategory.name}"? Transactions using it will become uncategorized.`}
+          confirmLabel="Delete"
+          onConfirm={() => void deleteCategory(deletingCategory.id)}
+          onClose={() => setDeletingCategory(null)}
         />
       )}
     </div>

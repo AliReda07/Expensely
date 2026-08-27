@@ -2,6 +2,7 @@
 import { X, Trash2 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 import { Sheet } from './Sheet';
+import { ConfirmSheet } from './ConfirmSheet';
 import type { Card, Category, TransactionType, TransactionWithCategory } from '../types';
 import type { TransactionInput } from '../hooks/useTransactions';
 
@@ -41,6 +42,7 @@ export function AddTransactionSheet({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   // Both grids default to a capped first page so a growing category/card list doesn't
   // turn "pick one" into a wall of options -- but if we're editing a transaction whose
   // category or card already lives past the fold, start expanded so it's visible.
@@ -84,7 +86,6 @@ export function AddTransactionSheet({
 
   const remove = async (close: () => void) => {
     if (!transaction || !onDelete) return;
-    if (!window.confirm("Delete this transaction? This can't be undone.")) return;
     setDeleting(true);
     const { error } = await onDelete(transaction.id);
     setDeleting(false);
@@ -106,7 +107,7 @@ export function AddTransactionSheet({
             <div className="flex items-center gap-1">
               {isEditing && onDelete && (
                 <button
-                  onClick={() => remove(close)}
+                  onClick={() => setConfirmingDelete(true)}
                   disabled={deleting}
                   className="rounded-full p-1.5 text-red-500 transition-colors hover:bg-red-50 active:scale-90 dark:text-red-400 dark:hover:bg-red-500/10"
                   aria-label="Delete transaction"
@@ -259,6 +260,15 @@ export function AddTransactionSheet({
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
+
+          {confirmingDelete && (
+            <ConfirmSheet
+              message="Delete this transaction? This can't be undone."
+              confirmLabel="Delete"
+              onConfirm={() => void remove(close)}
+              onClose={() => setConfirmingDelete(false)}
+            />
+          )}
         </>
       )}
     </Sheet>

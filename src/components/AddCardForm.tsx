@@ -1,4 +1,5 @@
 ﻿import { useState, type FormEvent } from 'react';
+import { ChipInput } from './ChipInput';
 import type { CardInput } from '../hooks/useCards';
 import type { Card, CardType } from '../types';
 
@@ -11,22 +12,27 @@ const TYPE_OPTIONS: { value: CardType; label: string }[] = [
 export function AddCardForm({
   cards,
   currency,
-  onAdd,
+  card,
+  onSubmit,
   onDone,
 }: {
   cards: Card[];
   currency: string;
-  onAdd: (input: CardInput) => Promise<{ error: string | null }>;
-  /** Called after a successful add — e.g. to close the sheet it's shown in. */
+  /** When set, the form edits this card in place instead of creating a new one. */
+  card?: Card;
+  onSubmit: (input: CardInput) => Promise<{ error: string | null }>;
+  /** Called after a successful save — e.g. to close the sheet it's shown in. */
   onDone?: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [last4, setLast4] = useState('');
-  const [type, setType] = useState<CardType>('debit');
-  const [startingBalance, setStartingBalance] = useState('');
-  const [creditLimit, setCreditLimit] = useState('');
-  const [bankSender, setBankSender] = useState('');
-  const [color, setColor] = useState(CARD_SWATCHES[0]);
+  const isEditing = !!card;
+  const [name, setName] = useState(card?.name ?? '');
+  const [last4, setLast4] = useState(card?.last4 ?? '');
+  const [type, setType] = useState<CardType>(card?.type ?? 'debit');
+  const [startingBalance, setStartingBalance] = useState(card ? String(card.starting_balance) : '');
+  const [creditLimit, setCreditLimit] = useState(card?.credit_limit != null ? String(card.credit_limit) : '');
+  const [bankSender, setBankSender] = useState(card?.bank_sender ?? '');
+  const [smsMatchPhrases, setSmsMatchPhrases] = useState<string[]>(card?.sms_match_phrases ?? []);
+  const [color, setColor] = useState(card?.color ?? CARD_SWATCHES[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +46,7 @@ export function AddCardForm({
       setError('Last 4 digits must be exactly 4 numbers.');
       return;
     }
-    if (last4 && cards.some((c) => c.last4 === last4)) {
+    if (last4 && cards.some((c) => c.last4 === last4 && c.id !== card?.id)) {
       setError(`You already have a card ending ${last4}.`);
       return;
     }
@@ -51,7 +57,7 @@ export function AddCardForm({
 
     setError(null);
     setSaving(true);
-    const result = await onAdd({
+    const result = await onSubmit({
       name: name.trim(),
       last4: last4 || null,
       color,
@@ -59,6 +65,7 @@ export function AddCardForm({
       starting_balance: Number(startingBalance) || 0,
       credit_limit: type === 'credit' && creditLimit.trim() ? Number(creditLimit) : null,
       bank_sender: bankSender.trim() || null,
+      sms_match_phrases: smsMatchPhrases,
     });
     setSaving(false);
 
@@ -66,12 +73,15 @@ export function AddCardForm({
       setError(result.error);
       return;
     }
-    setName('');
-    setLast4('');
-    setStartingBalance('');
-    setCreditLimit('');
-    setBankSender('');
-    setType('debit');
+    if (!isEditing) {
+      setName('');
+      setLast4('');
+      setStartingBalance('');
+      setCreditLimit('');
+      setBankSender('');
+      setSmsMatchPhrases([]);
+      setType('debit');
+    }
     onDone?.();
   };
 
@@ -129,17 +139,34 @@ export function AddCardForm({
       </div>
 
       <div>
+        <ChipInput
+          values={smsMatchPhrases}
+          onChange={setSmsMatchPhrases}
+          ariaLabel="Distinctive phrases in this bank's SMS, optional"
+          placeholder="Phrase unique to this bank's SMS, then Enter (optional)"
+        />
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+          Only needed as a fallback for banks whose SMS never mention the card's last 4 digits. Type a phrase and
+          press Enter to add it as its own tag — a bank often words this differently per message type (e.g.
+          "مسبقة الدفع" in a transfer notice vs. "بطاقة المدفوعة مقدما" in a purchase notice for the same prepaid
+          card), so add one tag for each wording you've seen. Any tag matching means the card resolves — but only
+          when it's the one card you have with that wording.
+        </p>
+      </div>
+
+      <div>
         <input
           type="text"
-          aria-label="Bank SMS sender, optional"
+          aria-label="Bank SMS sender, optional, advanced"
           value={bankSender}
           onChange={(e) => setBankSender(e.target.value)}
-          placeholder="Bank SMS sender (optional, e.g. HSBC)"
+          placeholder="Bank SMS sender (advanced, optional)"
           className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
         <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-          Only needed as a fallback for banks whose SMS never mention the card's last 4 digits — and only works if
-          this is the one card you have from that bank.
+          Advanced alternative to the phrase above — only works if your phone's SMS automation can actually filter
+          by this bank as a sender (many banks send from an alphanumeric ID that iOS can't filter by), and only
+          resolves the card when it's the one card you have from that sender.
         </p>
       </div>
 
@@ -180,7 +207,7 @@ export function AddCardForm({
         disabled={saving}
         className="w-full rounded-xl border border-brand py-2.5 font-semibold text-brand transition-transform active:scale-[0.98] disabled:opacity-60"
       >
-        {saving ? 'Adding…' : 'Add card'}
+        {isEditing ? (saving ? 'Saving…' : 'Save changes') : saving ? 'Adding…' : 'Add card'}
       </button>
     </form>
   );

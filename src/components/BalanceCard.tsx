@@ -50,19 +50,38 @@ export function BalanceCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // A large change needs a confirmation step before it saves (see LARGE_CHANGE_RATIO).
+  // That confirmation is a custom in-app prompt, not window.confirm() -- the native
+  // dialog is unreliable inside an iOS home-screen-installed PWA and can silently do
+  // nothing when triggered, which looks exactly like the save button not working.
+  const [confirmAmount, setConfirmAmount] = useState<number | null>(null);
 
   const startEdit = () => {
     setValue(String(balance));
     setError(null);
+    setConfirmAmount(null);
     setEditing(true);
   };
 
   const cancel = () => {
     setEditing(false);
     setError(null);
+    setConfirmAmount(null);
   };
 
-  const save = async () => {
+  const commitSave = async (amount: number) => {
+    setSaving(true);
+    const result = await onSave?.(amount);
+    setSaving(false);
+    setConfirmAmount(null);
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+    setEditing(false);
+  };
+
+  const attemptSave = () => {
     const trimmed = value.trim();
     const amount = Number(trimmed);
     if (trimmed === '' || !/^-?\d+(\.\d+)?$/.test(trimmed) || Number.isNaN(amount)) {
@@ -71,22 +90,12 @@ export function BalanceCard({
     }
     const delta = Math.abs(amount - balance);
     const isLargeChange = delta > Math.max(Math.abs(balance), 1) * LARGE_CHANGE_RATIO;
-    if (
-      isLargeChange &&
-      !window.confirm(
-        `Set balance to ${formatCurrency(amount, currency)}? This adjusts your starting balance -- it won't add a transaction.`,
-      )
-    ) {
+    if (isLargeChange) {
+      setError(null);
+      setConfirmAmount(amount);
       return;
     }
-    setSaving(true);
-    const result = await onSave?.(amount);
-    setSaving(false);
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-    setEditing(false);
+    void commitSave(amount);
   };
 
   const isNegative = variant === 'liability' ? balance > 0 : balance < 0;
@@ -185,32 +194,57 @@ export function BalanceCard({
 
         {editing ? (
           <div className="mt-1">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                inputMode="decimal"
-                autoFocus
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className="w-full min-w-0 rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold tracking-tight tabular-nums text-white outline-none placeholder:text-white/50"
-              />
-              <button
-                onClick={save}
-                disabled={saving}
-                aria-label="Save balance"
-                className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90 disabled:opacity-60"
-              >
-                <Check size={18} />
-              </button>
-              <button
-                onClick={cancel}
-                aria-label="Cancel editing balance"
-                className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-white/70">Adjusts your starting balance -- this won't add a transaction.</p>
+            {confirmAmount !== null ? (
+              <>
+                <p className="text-sm text-white">
+                  Set balance to {formatCurrency(confirmAmount, currency)}?
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    onClick={() => void commitSave(confirmAmount)}
+                    disabled={saving}
+                    className="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-semibold text-white transition-transform active:scale-95 disabled:opacity-60"
+                  >
+                    {saving ? 'Saving…' : 'Yes, set it'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmAmount(null)}
+                    className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-medium text-white/80 transition-transform active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoFocus
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    className="w-full min-w-0 rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold tracking-tight tabular-nums text-white outline-none placeholder:text-white/50"
+                  />
+                  <button
+                    onClick={attemptSave}
+                    disabled={saving}
+                    aria-label="Save balance"
+                    className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90 disabled:opacity-60"
+                  >
+                    <Check size={18} />
+                  </button>
+                  <button
+                    onClick={cancel}
+                    aria-label="Cancel editing balance"
+                    className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-white/70">Adjusts your starting balance -- this won't add a transaction.</p>
+              </>
+            )}
           </div>
         ) : (
           <>

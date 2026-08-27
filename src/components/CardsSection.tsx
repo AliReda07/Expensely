@@ -1,7 +1,8 @@
 ﻿import { useState } from 'react';
-import { CreditCard, Plus, X } from 'lucide-react';
+import { CreditCard, Pencil, Plus, X } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 import { AddCardSheet } from './AddCardSheet';
+import { ConfirmSheet } from './ConfirmSheet';
 import type { CardInput } from '../hooks/useCards';
 import type { Card } from '../types';
 
@@ -9,20 +10,18 @@ export function CardsSection({
   cards,
   currency,
   onAdd,
+  onUpdate,
   onDelete,
 }: {
   cards: Card[];
   currency: string;
   onAdd: (input: CardInput) => Promise<{ error: string | null }>;
+  onUpdate: (id: string, patch: Partial<CardInput>) => Promise<{ error: string | null }>;
   onDelete: (id: string) => Promise<{ error: string | null }>;
 }) {
   const [showAdd, setShowAdd] = useState(false);
-
-  const remove = async (card: Card) => {
-    const label = card.last4 ? `${card.name} ••${card.last4}` : card.name;
-    if (!window.confirm(`Remove "${label}"? Its transactions are kept but become unassigned.`)) return;
-    await onDelete(card.id);
-  };
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [removingCard, setRemovingCard] = useState<Card | null>(null);
 
   return (
     <>
@@ -65,11 +64,24 @@ export function CardsSection({
                   {c.type === 'credit' && c.credit_limit != null && (
                     <> · Limit {formatCurrency(c.credit_limit, currency)}</>
                   )}
+                  {c.sms_match_phrases.length > 0 && (
+                    <>
+                      {' '}
+                      · matches {c.sms_match_phrases.length === 1 ? `"${c.sms_match_phrases[0]}"` : `${c.sms_match_phrases.length} phrases`}
+                    </>
+                  )}
                   {c.bank_sender && <> · from {c.bank_sender}</>}
                 </p>
               </span>
               <button
-                onClick={() => remove(c)}
+                onClick={() => setEditingCard(c)}
+                aria-label={`Edit ${c.name}`}
+                className="rounded-full p-1.5 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-700"
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                onClick={() => setRemovingCard(c)}
                 aria-label={`Remove ${c.name}`}
                 className="rounded-full p-1.5 text-red-500 transition-all hover:bg-red-50 active:scale-90 dark:text-red-400 dark:hover:bg-red-500/10"
               >
@@ -80,7 +92,24 @@ export function CardsSection({
         </ul>
       )}
 
-      {showAdd && <AddCardSheet cards={cards} currency={currency} onAdd={onAdd} onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddCardSheet cards={cards} currency={currency} onSubmit={onAdd} onClose={() => setShowAdd(false)} />}
+      {editingCard && (
+        <AddCardSheet
+          cards={cards}
+          currency={currency}
+          card={editingCard}
+          onSubmit={(patch) => onUpdate(editingCard.id, patch)}
+          onClose={() => setEditingCard(null)}
+        />
+      )}
+      {removingCard && (
+        <ConfirmSheet
+          message={`Remove "${removingCard.last4 ? `${removingCard.name} ••${removingCard.last4}` : removingCard.name}"? Its transactions are kept but become unassigned.`}
+          confirmLabel="Remove"
+          onConfirm={() => void onDelete(removingCard.id)}
+          onClose={() => setRemovingCard(null)}
+        />
+      )}
     </>
   );
 }

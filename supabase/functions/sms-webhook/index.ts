@@ -1,5 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2.112.3';
-import { parseSmsPayload, parseTransaction } from '../_shared/categorize.ts';
+import { looksLikeInstantTransfer, looksLikeTransfer, matchCardByPhrase, parseSmsPayload, parseTransaction } from '../_shared/categorize.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +94,29 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Second fallback, for the same problem, that needs no cooperation from the phone
+  // side at all: a phrase unique to this bank's SMS template, matched against the
+  // message body itself. Useful when bank_sender can't be resolved because the phone's
+  // SMS automation has no way to filter by this bank as a sender in the first place.
+  // Fetches every card rather than filtering for a non-empty phrase list server-side --
+  // a user has at most a handful of cards, and matchCardByPhrase already skips any card
+  // with no phrases (an empty array never satisfies its `.some(...)` check).
+  if (!card) {
+    const { data: phraseCandidates } = await supabaseAdmin
+      .from('cards')
+      .select('id, name, last4, sms_match_phrases')
+      .eq('user_id', profile.id);
+    const matchedId = matchCardByPhrase(message, phraseCandidates ?? []);
+    if (matchedId) {
+      card = (phraseCandidates ?? []).find((c) => c.id === matchedId) ?? null;
+    }
+  }
+
+  // Visible marker for "this was a transfer", separate from getting income/expense
+  // right (that's parsed.type, driven by detectDirection in categorize.ts). "Instant"
+  // is the more specific tag when the message says so; plain "Transfer" otherwise.
+  const transferTag = looksLikeInstantTransfer(message) ? ' (Instant transfer)' : looksLikeTransfer(message) ? ' (Transfer)' : '';
+
   const { error: insertError } = await supabaseAdmin.from('transactions').insert({
     user_id: profile.id,
     type: parsed.type,
@@ -101,7 +124,7 @@ Deno.serve(async (req: Request) => {
     category_id: parsed.category?.id ?? null,
     card_id: card?.id ?? null,
     date: new Date().toISOString().slice(0, 10),
-    note: message.slice(0, 300),
+    note: message.slice(0, 300) + transferTag,
   });
 
   if (insertError) {

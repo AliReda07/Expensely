@@ -11,6 +11,7 @@ export interface CardInput {
   starting_balance: number;
   credit_limit: number | null;
   bank_sender: string | null;
+  sms_match_phrases: string[];
 }
 
 export function useCards() {
@@ -22,7 +23,7 @@ export function useCards() {
     if (!user) return;
     const { data } = await supabase
       .from('cards')
-      .select('id, user_id, name, last4, color, type, starting_balance, credit_limit, bank_sender')
+      .select('id, user_id, name, last4, color, type, starting_balance, credit_limit, bank_sender, sms_match_phrases')
       .eq('user_id', user.id)
       .order('created_at');
     setCards(data ?? []);

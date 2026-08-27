@@ -71,7 +71,8 @@ insert into public.categories (user_id, name, icon, color, is_preset) values
   (null, 'Health', 'heart-pulse', '#22c55e', true),
   (null, 'Groceries', 'shopping-cart', '#14b8a6', true),
   (null, 'Other', 'more-horizontal', '#64748b', true),
-  (null, 'Income', 'wallet', '#16a34a', true);
+  (null, 'Income', 'wallet', '#16a34a', true),
+  (null, 'Transfer', 'arrow-left-right', '#6366f1', true);
 
 -- Cards: a user's individual payment cards.
 --
@@ -95,6 +96,16 @@ create table public.cards (
   -- webhook only as a fallback card match when a bank's SMS never includes the card's
   -- last 4 digits -- and only when exactly one of the user's cards has that sender.
   bank_sender text,
+  -- Phrases that appear in this bank's SMS templates (e.g. "مسبقة الدفع" for a prepaid
+  -- card's transfer notices) -- a list, not a single value, because the same bank
+  -- describes the same card differently across message types (a transfer notice and a
+  -- purchase notice from the same bank may use entirely different wording). A second
+  -- fallback for the same problem as bank_sender -- resolving a card when its SMS never
+  -- print the last 4 digits -- for when per-bank Sender-based automation isn't
+  -- practical on the phone (many banks send from an alphanumeric Sender ID that iOS
+  -- Shortcuts cannot filter a contact by). Matched against the message body itself, so
+  -- it needs no phone-side setup at all.
+  sms_match_phrases text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 

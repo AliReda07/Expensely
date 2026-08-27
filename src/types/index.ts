@@ -31,6 +31,11 @@ export interface Card {
   /** The bank's SMS sender name/hotline, used by the SMS webhook as a fallback match
    *  when a bank's texts never include the card's last 4 digits. */
   bank_sender: string | null;
+  /** Phrases unique to this bank's SMS templates, used by the SMS webhook as a fallback
+   *  match when neither the last 4 digits nor bank_sender resolve the card. A list
+   *  because the same bank can describe the same card differently across message types
+   *  (e.g. a transfer notice vs. a purchase notice). */
+  sms_match_phrases: string[];
 }
 
 export interface Transaction {

@@ -17,6 +17,7 @@ import {
   Smartphone,
   Coffee,
   Fuel,
+  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -39,6 +40,7 @@ export const ICONS: Record<string, LucideIcon> = {
   smartphone: Smartphone,
   coffee: Coffee,
   fuel: Fuel,
+  'arrow-left-right': ArrowLeftRight,
 };
 
 export const ICON_NAMES = Object.keys(ICONS);
