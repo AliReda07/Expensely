@@ -28,7 +28,7 @@ function ProtectedShell({ children }: { children: ReactNode }) {
 
 function App() {
   return (
-    <div className="h-full pt-[env(safe-area-inset-top)]">
+    <div className="h-full">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

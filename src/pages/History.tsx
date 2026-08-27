@@ -48,7 +48,7 @@ export function History() {
   }, [transactions, query, filters]);
 
   return (
-    <div className="mesh-bg h-full space-y-4 overflow-y-auto px-4 pb-24 pt-6">
+    <div className="mesh-bg h-full space-y-4 overflow-y-auto px-4 pb-24 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
       <div className="flex items-center gap-3">
         <Link
           to="/"

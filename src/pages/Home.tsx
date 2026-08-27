@@ -136,7 +136,7 @@ export function Home() {
   }
 
   return (
-    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-28 pt-6">
+    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-28 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
       {initialLoading ? (
         <div className="animate-pulse space-y-4" aria-hidden="true">
           <div className="h-[104px] rounded-2xl bg-stone-200 dark:bg-stone-800" />

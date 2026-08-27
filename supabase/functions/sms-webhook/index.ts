@@ -27,6 +27,25 @@ function formatAmount(amount: number, currency: string): string {
   return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Web Push notification bodies are plain text -- there's no markup for bold. Swapping
+// ASCII letters/digits for their Unicode "Mathematical Bold" lookalikes is a common
+// plain-text trick to make the amount visually pop without any rendering support.
+const BOLD_DIGIT_OFFSET = 0x1d7ce - 0x30;
+const BOLD_UPPER_OFFSET = 0x1d400 - 0x41;
+const BOLD_LOWER_OFFSET = 0x1d41a - 0x61;
+
+function toBoldUnicode(text: string): string {
+  return Array.from(text)
+    .map((ch) => {
+      const code = ch.codePointAt(0)!;
+      if (code >= 0x30 && code <= 0x39) return String.fromCodePoint(code + BOLD_DIGIT_OFFSET);
+      if (code >= 0x41 && code <= 0x5a) return String.fromCodePoint(code + BOLD_UPPER_OFFSET);
+      if (code >= 0x61 && code <= 0x7a) return String.fromCodePoint(code + BOLD_LOWER_OFFSET);
+      return ch;
+    })
+    .join('');
+}
+
 // Called by a phone-side automation (e.g. an iOS Shortcut triggered on an
 // incoming bank SMS), not by the app itself, so there is no Supabase session
 // to verify -- the random token in the URL path is what identifies the user.
@@ -174,9 +193,18 @@ Deno.serve(async (req: Request) => {
     .eq('user_id', profile.id);
 
   if (subscriptions && subscriptions.length > 0) {
+    const sign = parsed.type === 'income' ? '+' : '-';
+    const directionEmoji = parsed.type === 'income' ? '💰' : '💸';
+    // `note` is the transfer party ("To X" / "From X") when detected, otherwise the
+    // raw SMS -- either way it reads better as the notification's headline than a
+    // bare amount, with the amount and category moved into the body line instead.
+    const noteText = note.length > 60 ? `${note.slice(0, 57)}…` : note;
+    const notifTitle = `${directionEmoji} ${noteText}`;
+    const boldAmount = toBoldUnicode(`${sign}${amountText}`);
+    const categoryLabel = parsed.category ? parsed.category.name : 'Uncategorized';
     await sendPushNotification(supabaseAdmin, subscriptions, {
-      title: `${parsed.type === 'income' ? '+' : '-'}${amountText}`,
-      body: `${card ? card.name : 'Transaction'}${categoryText}`,
+      title: notifTitle,
+      body: `${boldAmount} · 🏷️ ${categoryLabel}`,
       url: '/',
     });
   }

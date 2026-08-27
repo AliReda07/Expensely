@@ -23,7 +23,7 @@ export function Login() {
   };
 
   return (
-    <div className="mesh-bg animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
+    <div className="mesh-bg animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 pb-12 pt-[calc(env(safe-area-inset-top)+3rem)]">
       <Wordmark as="h1" className="text-center font-brand text-4xl font-bold text-[#1b347d] dark:text-white" />
       <p className="mt-1 text-center text-sm text-stone-500 dark:text-stone-400">Sign in to keep tracking your spending.</p>
 

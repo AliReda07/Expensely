@@ -117,7 +117,7 @@ export function Insights() {
   }, [expenses, month, user]);
 
   return (
-    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-24 pt-6">
+    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-24 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
       <h1 className="text-xl font-bold text-white dark:text-stone-100">Insights</h1>
 
       <MonthSelector month={month} onChange={setMonth} />
