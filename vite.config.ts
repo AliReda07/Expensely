@@ -28,7 +28,12 @@ export default defineConfig({
         description: 'Track balance, budgets, and spending on the go.',
         theme_color: '#3568f0',
         background_color: '#060814',
-        display: 'standalone',
+        // 'fullscreen' hides the OS status bar too (Android/Chrome honors this for an
+        // installed PWA). display_override lets the browser fall back to the next
+        // entry it actually supports rather than silently ignoring 'fullscreen' --
+        // 'standalone' (still no browser chrome, just the status bar) is the fallback.
+        display: 'fullscreen',
+        display_override: ['fullscreen', 'standalone'],
         start_url: '/',
         icons: [
           { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml' },
