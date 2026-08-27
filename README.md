@@ -14,6 +14,7 @@ Mobile-format expense tracker — React + TypeScript + Vite + Tailwind, installa
 - **Insights** — category breakdown (pie chart) and a 6-month spending trend, browsable by month
 - **Ask** — a chat page where you type or speak things like *"spent 50 on food"* or *"can I afford a 5000 trip?"*, and an AI agent (built in n8n) logs, corrects, or deletes transactions and answers questions about your spending. See [How the Ask assistant works](#how-the-ask-assistant-n8n-ai-workflow-works) below.
 - **SMS auto-logging** — forward a bank transaction SMS to a private webhook URL (e.g. via an iOS Shortcut) and it's parsed and logged automatically. This path is fully deterministic (no LLM involved) so the same message always produces the same result — see `supabase/functions/sms-webhook`.
+- **Push notifications** — a real (Web Push) notification when SMS auto-logging books a transaction, so it reaches you even if the app isn't open at the time. Enabled per-device from Settings → Push notifications. See `src/sw.ts` and `supabase/functions/_shared/push.ts`.
 - **Installable PWA** (add to home screen)
 
 ## How the Ask assistant (n8n AI workflow) works
@@ -51,12 +52,23 @@ Voice input is handled entirely client-side by the browser's Web Speech API (no 
    supabase secrets set N8N_ASK_WEBHOOK_URL=https://your-instance.app.n8n.cloud/webhook/your-path
    supabase secrets set N8N_ASK_WEBHOOK_SECRET=your-shared-secret
    ```
-6. **Install and run**:
+6. **Set up push notifications** (optional): generate a VAPID key pair —
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+   put the public key in `.env` as `VITE_VAPID_PUBLIC_KEY`, then set all three as Edge Function secrets so `sms-webhook` can send from them:
+   ```bash
+   supabase secrets set VAPID_PUBLIC_KEY=your-public-key
+   supabase secrets set VAPID_PRIVATE_KEY=your-private-key
+   supabase secrets set VAPID_SUBJECT=mailto:you@example.com
+   ```
+   Without these three secrets set, `sendPushNotification` silently no-ops — SMS auto-logging still works, it just won't push a notification.
+7. **Install and run**:
    ```bash
    npm install
    npm run dev
    ```
-7. **Run tests**:
+8. **Run tests**:
    ```bash
    npm test
    ```

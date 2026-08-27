@@ -136,7 +136,7 @@ export function Home() {
   }
 
   return (
-    <div className="h-full space-y-6 overflow-y-auto px-4 pb-28 pt-6">
+    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-28 pt-6">
       {initialLoading ? (
         <div className="animate-pulse space-y-4" aria-hidden="true">
           <div className="h-[104px] rounded-2xl bg-stone-200 dark:bg-stone-800" />
@@ -172,28 +172,28 @@ export function Home() {
         </>
       )}
 
-      <div>
-        <div className="mb-1 flex items-center justify-end">
-          <button
-            onClick={() => setShowBudgetSheet(true)}
-            aria-label="Edit budget"
-            className="-m-2 flex items-center gap-1 p-2 text-xs font-medium text-brand transition-transform active:scale-95"
-          >
-            <Pencil size={12} />
-            Edit budget
-          </button>
-        </div>
-        {profile?.overall_budget ? (
+      {profile?.overall_budget ? (
+        <div className="rounded-2xl bg-white p-4 shadow-sm shadow-stone-200/60 dark:bg-stone-900 dark:shadow-black/40">
+          <div className="mb-1 flex items-center justify-end">
+            <button
+              onClick={() => setShowBudgetSheet(true)}
+              aria-label="Edit budget"
+              className="flex items-center gap-1 text-xs font-medium text-brand transition-transform active:scale-95"
+            >
+              <Pencil size={12} />
+              Edit budget
+            </button>
+          </div>
           <BudgetProgress label="This month's budget" spent={totalSpent} budget={profile.overall_budget} currency={currency} />
-        ) : (
-          <button
-            onClick={() => setShowBudgetSheet(true)}
-            className="block w-full rounded-xl border border-dashed border-stone-300 bg-white p-3 text-center text-sm text-stone-500 transition-all active:scale-[0.98] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
-          >
-            Set a monthly budget
-          </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowBudgetSheet(true)}
+          className="block w-full rounded-xl border border-dashed border-stone-300 bg-white p-3 text-center text-sm text-stone-500 transition-all active:scale-[0.98] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
+        >
+          Set a monthly budget
+        </button>
+      )}
 
       {budgets.length > 0 && (
         <div className="space-y-3">
@@ -214,7 +214,7 @@ export function Home() {
         </div>
       )}
 
-      <div>
+      <div className="rounded-2xl bg-white p-4 shadow-sm shadow-stone-200/60 dark:bg-stone-900 dark:shadow-black/40">
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300">Recent transactions</h2>
           <Link to="/history" className="text-xs font-medium text-brand transition-opacity active:opacity-60">

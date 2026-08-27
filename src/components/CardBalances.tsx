@@ -72,7 +72,7 @@ export function CardBalances({
           Add card
         </button>
       </div>
-      <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-800 dark:shadow-black/30">
+      <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-900 dark:shadow-black/40">
         {rows.map((row, i) => {
           const isActive = selected === row.key;
           const isCredit = row.type === 'credit';

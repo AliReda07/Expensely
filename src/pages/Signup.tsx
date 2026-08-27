@@ -29,7 +29,7 @@ export function Signup() {
 
   if (confirmSent) {
     return (
-      <div className="animate-row-in flex h-full flex-col items-center justify-center overflow-y-auto px-6 text-center">
+      <div className="mesh-bg animate-row-in flex h-full flex-col items-center justify-center overflow-y-auto px-6 text-center">
         <Wordmark as="p" className="mb-1 font-brand text-base font-semibold text-brand" />
         <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Check your email</h1>
         <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
@@ -43,7 +43,7 @@ export function Signup() {
   }
 
   return (
-    <div className="animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
+    <div className="mesh-bg animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
       <Wordmark as="p" className="mb-1 font-brand text-base font-semibold text-brand" />
       <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-100">Create your account</h1>
       <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Start tracking your balance, budgets, and spending.</p>
@@ -74,7 +74,7 @@ export function Signup() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-brand py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="w-full rounded-xl bg-gradient-to-br from-brand to-brand-dark py-3 font-semibold text-white shadow-lg shadow-brand/25 transition-transform active:scale-[0.98] disabled:opacity-60"
         >
           {loading ? 'Creating account…' : 'Sign up'}
         </button>

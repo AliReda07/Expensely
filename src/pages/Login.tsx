@@ -23,8 +23,8 @@ export function Login() {
   };
 
   return (
-    <div className="animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
-      <Wordmark as="h1" className="text-center font-brand text-4xl font-bold text-brand" />
+    <div className="mesh-bg animate-row-in flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
+      <Wordmark as="h1" className="text-center font-brand text-4xl font-bold text-[#1b347d] dark:text-white" />
       <p className="mt-1 text-center text-sm text-stone-500 dark:text-stone-400">Sign in to keep tracking your spending.</p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">
@@ -52,7 +52,7 @@ export function Login() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-brand py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="w-full rounded-xl bg-gradient-to-br from-brand to-brand-dark py-3 font-semibold text-white shadow-lg shadow-brand/25 transition-transform active:scale-[0.98] disabled:opacity-60"
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>

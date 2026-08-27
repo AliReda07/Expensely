@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
     const meta = document.querySelector('meta[name="theme-color"]');
-    meta?.setAttribute('content', resolvedTheme === 'dark' ? '#0c0a09' : '#16a34a');
+    meta?.setAttribute('content', resolvedTheme === 'dark' ? '#060814' : '#3568f0');
   }, [resolvedTheme]);
 
   const setTheme = (next: ThemePreference) => {

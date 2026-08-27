@@ -4,6 +4,7 @@ import {
   detectDirection,
   detectType,
   extractCardLast4,
+  extractTransferParty,
   hasTransactionVerb,
   looksLikeInstantTransfer,
   looksLikeTransfer,
@@ -167,6 +168,38 @@ describe('detectDirection', () => {
 
   it('returns null for text with no account-direction phrasing at all', () => {
     expect(detectDirection('EGP 300 debited at CARREFOUR')).toBeNull();
+  });
+});
+
+describe('extractTransferParty', () => {
+  it('reads the recipient name from the real outgoing-transfer sample, stopping before the reference-number field', () => {
+    const sms =
+      'تم تنفيذ تحويل لحظي من بطاقتكم مسبقة الدفع بمبلغ 100.00 جم إلى ALI A**** M****** ' +
+      'رقم مرجعي 627260319444 يوم 08-25 الساعة 21:27 للمزيد اتصل بـ 19623';
+    expect(extractTransferParty(sms, 'out')).toBe('ALI A**** M******');
+  });
+
+  it('reads a recipient name after the separated "to" preposition', () => {
+    expect(extractTransferParty('تم تحويل مبلغ 100 جم الى Mona Ahmed', 'out')).toBe('Mona Ahmed');
+  });
+
+  it('reads an English "to <name>" recipient', () => {
+    expect(extractTransferParty('Transferred EGP 100 to John Smith', 'out')).toBe('John Smith');
+  });
+
+  it('reads a sender name after "from" for an incoming transfer', () => {
+    // Amount-then-sender ordering matches the existing "من SOME PERSON" fixture used
+    // elsewhere in this file (see detectDirection's "does not treat 'from <person>'..."
+    // case above) -- the name trailing at the end, not followed by another field.
+    expect(extractTransferParty('تم إضافة تحويل لحظي لبطاقتكم بمبلغ 100.00 جم من SOME PERSON', 'in')).toBe('SOME PERSON');
+  });
+
+  it('returns null when the direction is unknown', () => {
+    expect(extractTransferParty('تحويل بمبلغ 100 جم إلى ALI A**** M******', null)).toBeNull();
+  });
+
+  it('returns null when there is no name in that position', () => {
+    expect(extractTransferParty('تم تنفيذ تحويل لحظي من بطاقتكم بمبلغ 100.00 جم', 'out')).toBeNull();
   });
 });
 

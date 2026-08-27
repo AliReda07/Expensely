@@ -48,16 +48,16 @@ export function History() {
   }, [transactions, query, filters]);
 
   return (
-    <div className="h-full space-y-4 overflow-y-auto px-4 pb-24 pt-6">
+    <div className="mesh-bg h-full space-y-4 overflow-y-auto px-4 pb-24 pt-6">
       <div className="flex items-center gap-3">
         <Link
           to="/"
           aria-label="Back to Home"
-          className="rounded-full p-1.5 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-800"
+          className="rounded-full border border-stone-900/10 bg-white/70 p-1.5 text-stone-500 backdrop-blur-sm transition-all hover:bg-stone-900/5 active:scale-90 dark:border-white/10 dark:bg-stone-900/50 dark:text-stone-400 dark:hover:bg-white/10"
         >
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Transactions</h1>
+        <h1 className="text-xl font-bold text-white dark:text-stone-100">Transactions</h1>
       </div>
 
       <div className="flex items-center gap-2">
@@ -86,40 +86,42 @@ export function History() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="animate-pulse space-y-3" aria-hidden="true">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-xl bg-stone-100 dark:bg-stone-800" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">
-          {transactions.length === 0 ? (
-            <p>No transactions yet.</p>
-          ) : (
-            <>
-              <p>No transactions match your search{activeFilterCount > 0 ? ' and filters' : ''}.</p>
-              <button
-                onClick={() => {
-                  setQuery('');
-                  setFilters(EMPTY_FILTERS);
-                }}
-                className="mt-2 font-medium text-brand transition-opacity active:opacity-60"
-              >
-                Clear filters
-              </button>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="divide-y divide-stone-100 dark:divide-stone-800">
-          {filtered.map((t, i) => (
-            <div key={t.id} className="animate-row-in" style={{ animationDelay: `${Math.min(i, 6) * 30}ms` }}>
-              <TransactionRow transaction={t} currency={currency} onClick={() => setEditing(t)} />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="rounded-2xl bg-white p-4 shadow-sm shadow-stone-200/60 dark:bg-stone-900 dark:shadow-black/40">
+        {loading ? (
+          <div className="animate-pulse space-y-3" aria-hidden="true">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-14 rounded-xl bg-stone-100 dark:bg-stone-700" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-10 text-center text-sm text-stone-600 dark:text-stone-400">
+            {transactions.length === 0 ? (
+              <p>No transactions yet.</p>
+            ) : (
+              <>
+                <p>No transactions match your search{activeFilterCount > 0 ? ' and filters' : ''}.</p>
+                <button
+                  onClick={() => {
+                    setQuery('');
+                    setFilters(EMPTY_FILTERS);
+                  }}
+                  className="mt-2 font-medium text-brand transition-opacity active:opacity-60"
+                >
+                  Clear filters
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-stone-100 dark:divide-stone-800">
+            {filtered.map((t, i) => (
+              <div key={t.id} className="animate-row-in" style={{ animationDelay: `${Math.min(i, 6) * 30}ms` }}>
+                <TransactionRow transaction={t} currency={currency} onClick={() => setEditing(t)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {editing && (
         <AddTransactionSheet

@@ -1,5 +1,5 @@
 ﻿import { useState, type ReactNode } from 'react';
-import { Banknote, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Banknote, Bell, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -7,6 +7,7 @@ import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
 import { useTheme } from '../contexts/ThemeContext';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { CardsSection } from '../components/CardsSection';
 import { BudgetSheet } from '../components/BudgetSheet';
@@ -29,19 +30,32 @@ export function Settings() {
   const { cards, addCard, updateCard, deleteCard } = useCards();
   const { theme, setTheme } = useTheme();
   const { canInstall, canShowIOSInstructions, promptInstall } = useInstallPrompt();
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, enable: enablePush, disable: disablePush } =
+    usePushNotifications();
 
   const [showBudgets, setShowBudgets] = useState(false);
   const [showSmsSheet, setShowSmsSheet] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string } | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const togglePush = async () => {
+    setPushBusy(true);
+    if (pushSubscribed) {
+      await disablePush();
+    } else {
+      await enablePush();
+    }
+    setPushBusy(false);
+  };
 
   const budgetByCategory = new Map(budgets.map((b) => [b.category_id, b.amount]));
   const currency = profile?.currency ?? 'EGP';
 
   return (
-    <div className="h-full space-y-6 overflow-y-auto px-4 pb-24 pt-6">
-      <h1 className="text-xl font-bold text-stone-800 dark:text-stone-100">Settings</h1>
+    <div className="mesh-bg h-full space-y-6 overflow-y-auto px-4 pb-24 pt-6">
+      <h1 className="text-xl font-bold text-white dark:text-stone-100">Settings</h1>
 
       <SettingsSection title="Account">
         <SettingsRow
@@ -141,6 +155,23 @@ export function Settings() {
           icon={<MessageSquareText size={18} className="text-violet-600 dark:text-violet-400" />}
           iconBg="bg-violet-50 dark:bg-violet-500/10"
         />
+        <SettingsRow
+          as={pushSupported ? 'button' : 'div'}
+          onClick={pushSupported ? () => void togglePush() : undefined}
+          label="Push notifications"
+          sublabel={
+            !pushSupported
+              ? 'Not supported on this device/browser'
+              : pushError
+                ? pushError
+                : pushSubscribed
+                  ? 'Notified when a transaction is auto-logged from SMS'
+                  : 'Get notified when a transaction is auto-logged from SMS'
+          }
+          icon={<Bell size={18} className="text-amber-600 dark:text-amber-400" />}
+          iconBg="bg-amber-50 dark:bg-amber-500/10"
+          trailing={pushSupported ? <ToggleSwitch checked={pushSubscribed} busy={pushBusy || pushLoading} /> : undefined}
+        />
       </SettingsSection>
 
       <SettingsSection title="Cards">
@@ -230,7 +261,7 @@ function SettingsSection({ title, children }: { title: string; children: ReactNo
   return (
     <section>
       <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-400">{title}</h2>
-      <div className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-800 dark:shadow-black/30">
+      <div className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-900 dark:shadow-black/40">
         {children}
       </div>
     </section>
@@ -247,6 +278,7 @@ function SettingsRow({
   value,
   labelClassName,
   showChevron = true,
+  trailing,
 }: {
   as?: 'div' | 'button';
   onClick?: () => void;
@@ -257,6 +289,8 @@ function SettingsRow({
   value?: string;
   labelClassName?: string;
   showChevron?: boolean;
+  /** Replaces the value/chevron on the right entirely, e.g. a toggle switch. */
+  trailing?: ReactNode;
 }) {
   const Comp = as;
   return (
@@ -269,8 +303,33 @@ function SettingsRow({
         <p className={`truncate text-sm font-medium text-stone-800 dark:text-stone-100 ${labelClassName ?? ''}`}>{label}</p>
         {sublabel && <p className="truncate text-xs text-stone-600 dark:text-stone-400">{sublabel}</p>}
       </span>
-      {value && <span className="text-sm text-stone-600 dark:text-stone-400">{value}</span>}
-      {as === 'button' && showChevron && <ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
+      {trailing ?? (
+        <>
+          {value && <span className="text-sm text-stone-600 dark:text-stone-400">{value}</span>}
+          {as === 'button' && showChevron && <ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
+        </>
+      )}
     </Comp>
+  );
+}
+
+// Purely visual -- lives inside a SettingsRow that's already `as="button"`, so
+// this stays a <span> rather than a nested <button> (invalid HTML, and two
+// overlapping tap targets). The row's own click handler does the toggling.
+function ToggleSwitch({ checked, busy }: { checked: boolean; busy?: boolean }) {
+  return (
+    <span
+      role="switch"
+      aria-checked={checked}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${busy ? 'opacity-50' : ''} ${
+        checked ? 'bg-brand' : 'bg-stone-200 dark:bg-stone-600'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+        }`}
+      />
+    </span>
   );
 }

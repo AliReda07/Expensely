@@ -14,10 +14,10 @@ export function MonthSelector({
   const shift = (delta: number) => onChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between rounded-full border border-stone-900/10 bg-white/70 py-1 pl-1 pr-3 backdrop-blur-sm dark:border-white/10 dark:bg-stone-900/50">
       <button
         onClick={() => shift(-1)}
-        className="rounded-full p-2 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 dark:text-stone-400 dark:hover:bg-stone-800"
+        className="rounded-full p-2 text-stone-500 transition-all hover:bg-stone-900/5 active:scale-90 dark:text-stone-400 dark:hover:bg-white/10"
         aria-label="Previous month"
       >
         <ChevronLeft size={18} />
@@ -28,7 +28,7 @@ export function MonthSelector({
       <button
         onClick={() => shift(1)}
         disabled={isCurrentMonth}
-        className="rounded-full p-2 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent disabled:active:scale-100 dark:text-stone-400 dark:hover:bg-stone-800"
+        className="rounded-full p-2 text-stone-500 transition-all hover:bg-stone-900/5 active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent disabled:active:scale-100 dark:text-stone-400 dark:hover:bg-white/10"
         aria-label="Next month"
       >
         <ChevronRight size={18} />

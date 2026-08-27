@@ -1,5 +1,14 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2.112.3';
-import { looksLikeInstantTransfer, looksLikeTransfer, matchCardByPhrase, parseSmsPayload, parseTransaction } from '../_shared/categorize.ts';
+import {
+  detectDirection,
+  extractTransferParty,
+  looksLikeInstantTransfer,
+  looksLikeTransfer,
+  matchCardByPhrase,
+  parseSmsPayload,
+  parseTransaction,
+} from '../_shared/categorize.ts';
+import { sendPushNotification } from '../_shared/push.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -121,6 +130,19 @@ Deno.serve(async (req: Request) => {
   // is the more specific tag when the message says so; plain "Transfer" otherwise.
   const transferTag = looksLikeInstantTransfer(message) ? ' (Instant transfer)' : looksLikeTransfer(message) ? ' (Transfer)' : '';
 
+  // For a transfer, who the money actually went to/came from is more useful than the
+  // raw SMS text as the note -- e.g. "To ALI A**** M******" instead of a truncated
+  // Arabic sentence. Falls back to the raw message (as before) when the bank's SMS
+  // doesn't name the other party in a recognizable position; see extractTransferParty.
+  let note = message.slice(0, 300) + transferTag;
+  if (transferTag) {
+    const direction = detectDirection(message);
+    const party = extractTransferParty(message, direction);
+    if (party) {
+      note = direction === 'out' ? `To ${party}` : `From ${party}`;
+    }
+  }
+
   const { error: insertError } = await supabaseAdmin.from('transactions').insert({
     user_id: profile.id,
     type: parsed.type,
@@ -128,7 +150,7 @@ Deno.serve(async (req: Request) => {
     category_id: parsed.category?.id ?? null,
     card_id: card?.id ?? null,
     date: new Date().toISOString().slice(0, 10),
-    note: message.slice(0, 300) + transferTag,
+    note,
   });
 
   if (insertError) {
@@ -142,5 +164,22 @@ Deno.serve(async (req: Request) => {
     : parsed.cardLast4
       ? ` (no card saved ending ${parsed.cardLast4})`
       : '';
+
+  // Runs from a phone-side automation, not the app itself, so the user isn't
+  // necessarily looking at the app when this happens -- a real push is what
+  // actually reaches them, not an in-app toast they'd have to be present for.
+  const { data: subscriptions } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', profile.id);
+
+  if (subscriptions && subscriptions.length > 0) {
+    await sendPushNotification(supabaseAdmin, subscriptions, {
+      title: `${parsed.type === 'income' ? '+' : '-'}${amountText}`,
+      body: `${card ? card.name : 'Transaction'}${categoryText}`,
+      url: '/',
+    });
+  }
+
   return textResponse(`Logged ${amountText} ${parsed.type}${categoryText}${cardText}.`);
 });

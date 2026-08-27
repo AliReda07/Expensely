@@ -335,7 +335,7 @@ export function Ask() {
                   </p>
                 )}
                 {m.chart && m.chart.length > 0 && (
-                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl border border-stone-100 bg-white p-2 shadow-sm shadow-stone-200/60 dark:border-stone-700 dark:bg-stone-800 dark:shadow-black/30">
+                  <div className="mb-2 h-44 w-full max-w-[min(320px,80vw)] rounded-xl bg-white p-2 shadow-sm shadow-stone-200/60 dark:bg-stone-900 dark:shadow-black/40">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={m.chart} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }}>
                         <XAxis type="number" hide />

@@ -16,13 +16,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // A custom service worker (src/sw.ts) is required for push notifications --
+      // the default generateSW strategy has no hook for a `push` event listener.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['pwa-icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Expensely',
         short_name: 'Expensely',
         description: 'Track balance, budgets, and spending on the go.',
-        theme_color: '#16a34a',
-        background_color: '#ffffff',
+        theme_color: '#3568f0',
+        background_color: '#060814',
         display: 'standalone',
         start_url: '/',
         icons: [

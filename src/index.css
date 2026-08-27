@@ -3,8 +3,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-brand: #16a34a;
-  --color-brand-dark: #15803d;
+  /* Blue-gradient identity: vivid blue as the primary accent, near-black navy
+     as its dark gradient stop/shade, and a cyan-leaning highlight for the
+     ambient background blobs. Replaces the old flat green brand. */
+  --color-brand: #3568f0;
+  --color-brand-dark: #0a1230;
+  --color-brand-light: #5fd4e8;
   /* The Expensely wordmark only -- a sharper geometric display face, distinct from
      the neutral system sans everything else in the app uses. */
   --font-brand: 'Sora', ui-sans-serif, system-ui, sans-serif;
@@ -28,24 +32,60 @@ body,
 
 .dark {
   color-scheme: dark;
+  /* Card, border, and divider surfaces (stone-600 through stone-900) are warm
+     neutral grays by default -- they read as charcoal against the app's cool
+     blue photo backgrounds. Re-tinting them navy here recolors every such
+     surface app-wide with no per-component changes, since Tailwind utilities
+     resolve these as CSS variables. Text shades (stone-100 through stone-500,
+     tuned separately for legibility) are untouched -- only the
+     structural/surface steps shift. */
+  --color-stone-900: #12162a;
+  --color-stone-800: #1c2140;
+  --color-stone-700: #2e355c;
+  --color-stone-600: #3c456f;
 }
 
 html {
-  background-color: #f8fafc;
+  background-color: #f6f4ee;
 }
 
 html.dark {
-  background-color: #0c0a09;
+  background-color: #060814;
 }
 
 body {
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
-  background-color: #f8fafc;
+  background-color: #f6f4ee;
 }
 
 .dark body {
-  background-color: #0c0a09;
+  background-color: #060814;
+}
+
+/* Ambient background photo -- anchored to the top of each page's own content
+   and scrolling *with* that content rather than sitting fixed behind it. Every
+   page's scrolling root div (each is its own `h-full overflow-y-auto` container
+   -- see the html/body/#root comment above) carries this class directly, since
+   `background-attachment: local` only moves with scrolling when applied to the
+   element that actually scrolls. */
+.mesh-bg {
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-size: 100% auto;
+  background-attachment: local;
+  /* The fade to the flat page color is baked into the image itself (its own
+     bottom row of pixels IS #f6f4ee / #060814), not layered on top with a
+     separate CSS gradient -- a gradient sized `auto` has no intrinsic ratio,
+     so it stretches to the full scrollable content height while the photo
+     (which does have one) stops at its own much shorter natural height. That
+     mismatch was the hard seam: the gradient hadn't finished fading by the
+     point the photo actually ended. One correctly-faded raster avoids it. */
+  background-image: url('/bg-light.jpg');
+}
+
+.dark .mesh-bg {
+  background-image: url('/bg-dark.jpg');
 }
 
 * {

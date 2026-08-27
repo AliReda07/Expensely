@@ -99,164 +99,150 @@ export function BalanceCard({
   };
 
   const isNegative = variant === 'liability' ? balance > 0 : balance < 0;
-  // With a known limit, the danger gradient scales along the same green->amber->red
+  // With a known limit, the sublabel's color scales along the same green->amber->red
   // ramp budgets use, so "owe a little, plenty of headroom" reads calmer than "over
-  // the limit" instead of both getting an identical alarm-red card.
-  const liabilityGradient =
-    liabilityPct != null
-      ? `linear-gradient(to bottom right, ${progressColor(Math.max(0, liabilityPct - 15))}, ${progressColor(Math.min(100, liabilityPct + 15))})`
-      : undefined;
+  // the limit" instead of both getting an identical alarm color.
+  const liabilityColor = liabilityPct != null ? progressColor(liabilityPct) : undefined;
 
   return (
-    <div
-      className={`relative overflow-visible rounded-2xl p-5 text-white shadow-lg transition-shadow duration-500 ${
-        isNegative ? 'shadow-red-600/20' : 'shadow-brand/20'
-      }`}
-    >
-      <div
-        aria-hidden="true"
-        className={`absolute inset-0 overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-brand-dark transition-opacity duration-500 ${
-          isNegative ? 'opacity-0' : 'opacity-100'
-        }`}
-      />
-      <div
-        aria-hidden="true"
-        style={liabilityGradient ? { backgroundImage: liabilityGradient } : undefined}
-        className={`absolute inset-0 overflow-hidden rounded-2xl transition-opacity duration-500 ${
-          liabilityGradient ? '' : 'bg-gradient-to-br from-red-500 to-red-700'
-        } ${isNegative ? 'opacity-100' : 'opacity-0'}`}
-      />
+    <div className="flex flex-col items-center py-6 text-center">
+      {accountPicker ? (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((o) => !o)}
+            aria-expanded={pickerOpen}
+            className="flex items-center gap-1.5 rounded-full border border-stone-900/10 bg-stone-900/5 px-3 py-1.5 text-sm font-medium text-stone-700 backdrop-blur-sm transition-colors active:scale-95 dark:border-white/10 dark:bg-white/10 dark:text-white/90"
+          >
+            {label}
+            <ChevronDown size={14} className={`transition-transform duration-200 ${pickerOpen ? 'rotate-180' : ''}`} />
+          </button>
 
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          {accountPicker ? (
-            <div className="relative">
+          {pickerOpen && (
+            <>
               <button
                 type="button"
-                onClick={() => setPickerOpen((o) => !o)}
-                aria-expanded={pickerOpen}
-                className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-sm font-medium text-white/90 transition-colors active:scale-95 hover:bg-white/20"
-              >
-                {label}
-                <ChevronDown size={14} className={`transition-transform duration-200 ${pickerOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {pickerOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close account picker"
-                    className="fixed inset-0 z-10 cursor-default"
-                    onClick={() => setPickerOpen(false)}
-                  />
-                  <div className="animate-dropdown-in absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl bg-white p-1 text-left shadow-xl dark:bg-stone-800">
-                    {accountPicker.options.map((opt) => {
-                      const isSelected = opt.key === accountPicker.selected;
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => {
-                            accountPicker.onSelect(opt.key);
-                            setPickerOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-stone-50 active:bg-stone-100 dark:hover:bg-stone-700 dark:active:bg-stone-600"
-                        >
-                          <Check size={14} className={isSelected ? 'text-brand' : 'text-transparent'} />
-                          <span className="text-stone-500 dark:text-stone-400">{opt.icon}</span>
-                          {opt.dotColor && (
-                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: opt.dotColor }} />
-                          )}
-                          <span className="min-w-0 flex-1 truncate font-medium text-stone-800 dark:text-stone-100">
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm font-medium text-white/80">{label}</p>
+                aria-label="Close account picker"
+                className="fixed inset-0 z-10 cursor-default"
+                onClick={() => setPickerOpen(false)}
+              />
+              <div className="animate-dropdown-in absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-xl bg-white p-1 text-left shadow-xl dark:bg-stone-800">
+                {accountPicker.options.map((opt) => {
+                  const isSelected = opt.key === accountPicker.selected;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => {
+                        accountPicker.onSelect(opt.key);
+                        setPickerOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-stone-50 active:bg-stone-100 dark:hover:bg-stone-700 dark:active:bg-stone-600"
+                    >
+                      <Check size={14} className={isSelected ? 'text-brand' : 'text-transparent'} />
+                      <span className="text-stone-500 dark:text-stone-400">{opt.icon}</span>
+                      {opt.dotColor && (
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: opt.dotColor }} />
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-medium text-stone-800 dark:text-stone-100">
+                        {opt.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           )}
+        </div>
+      ) : (
+        <p className="text-sm font-medium text-stone-600 dark:text-white/80">{label}</p>
+      )}
 
-          {onSave && !editing && (
+      {editing ? (
+        <div className="mt-2 w-full max-w-xs">
+          {confirmAmount !== null ? (
+            <>
+              <p className="text-sm text-stone-700 dark:text-white">
+                Set balance to {formatCurrency(confirmAmount, currency)}?
+              </p>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => void commitSave(confirmAmount)}
+                  disabled={saving}
+                  className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-transform active:scale-95 disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Yes, set it'}
+                </button>
+                <button
+                  onClick={() => setConfirmAmount(null)}
+                  className="rounded-lg bg-stone-900/5 px-3 py-1.5 text-sm font-medium text-stone-700 transition-transform active:scale-95 dark:bg-white/10 dark:text-white/80"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="w-full min-w-0 rounded-lg border border-stone-200 bg-white px-2 py-1 text-center text-2xl font-bold tracking-tight tabular-nums text-stone-900 outline-none focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-white"
+                />
+                <button
+                  onClick={attemptSave}
+                  disabled={saving}
+                  aria-label="Save balance"
+                  className="shrink-0 rounded-lg bg-brand p-1.5 text-white transition-transform active:scale-90 disabled:opacity-60"
+                >
+                  <Check size={18} />
+                </button>
+                <button
+                  onClick={cancel}
+                  aria-label="Cancel editing balance"
+                  className="shrink-0 rounded-lg bg-stone-900/5 p-1.5 text-stone-700 transition-transform active:scale-90 dark:bg-white/10 dark:text-white/80"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-stone-500 dark:text-white/70">
+                Adjusts your starting balance -- this won't add a transaction.
+              </p>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="mt-1 flex items-center gap-1.5">
+          <p
+            key={balance}
+            className={`animate-value-pop text-4xl font-bold tracking-tight tabular-nums ${
+              isNegative ? 'text-red-600 dark:text-red-400' : 'text-[#1b347d] dark:text-white'
+            }`}
+          >
+            {formatCurrency(balance, currency)}
+          </p>
+          {onSave && (
             <button
               onClick={startEdit}
               aria-label="Edit balance"
-              className="rounded-lg p-1 text-white/70 transition-all hover:text-white active:scale-90"
+              className="rounded-lg p-1 text-stone-400 transition-all hover:text-stone-700 active:scale-90 dark:text-white/50 dark:hover:text-white"
             >
               <Pencil size={16} />
             </button>
           )}
         </div>
+      )}
 
-        {editing ? (
-          <div className="mt-1">
-            {confirmAmount !== null ? (
-              <>
-                <p className="text-sm text-white">
-                  Set balance to {formatCurrency(confirmAmount, currency)}?
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <button
-                    onClick={() => void commitSave(confirmAmount)}
-                    disabled={saving}
-                    className="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-semibold text-white transition-transform active:scale-95 disabled:opacity-60"
-                  >
-                    {saving ? 'Saving…' : 'Yes, set it'}
-                  </button>
-                  <button
-                    onClick={() => setConfirmAmount(null)}
-                    className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-medium text-white/80 transition-transform active:scale-95"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    autoFocus
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    className="w-full min-w-0 rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold tracking-tight tabular-nums text-white outline-none placeholder:text-white/50"
-                  />
-                  <button
-                    onClick={attemptSave}
-                    disabled={saving}
-                    aria-label="Save balance"
-                    className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90 disabled:opacity-60"
-                  >
-                    <Check size={18} />
-                  </button>
-                  <button
-                    onClick={cancel}
-                    aria-label="Cancel editing balance"
-                    className="shrink-0 rounded-lg bg-white/20 p-1.5 transition-transform active:scale-90"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-white/70">Adjusts your starting balance -- this won't add a transaction.</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-            <p key={balance} className="animate-value-pop mt-1 text-3xl font-bold tracking-tight tabular-nums">
-              {formatCurrency(balance, currency)}
-            </p>
-            {sublabel && <p className="mt-0.5 text-xs tabular-nums text-white/70">{sublabel}</p>}
-          </>
-        )}
+      {!editing && sublabel && (
+        <p className="mt-0.5 text-xs tabular-nums text-stone-500 dark:text-white/70" style={liabilityColor ? { color: liabilityColor } : undefined}>
+          {sublabel}
+        </p>
+      )}
 
-        {error && <p className="animate-shake mt-1 text-xs text-red-100">{error}</p>}
-      </div>
+      {error && <p className="animate-shake mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

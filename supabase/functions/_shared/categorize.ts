@@ -301,6 +301,44 @@ export function detectDirection(text: string): 'in' | 'out' | null {
   return null;
 }
 
+// Bank SMS run the name straight into the next field with a space, not a comma or
+// period ("إلى ALI A**** M****** رقم مرجعي ..." -- no punctuation before "رقم" at
+// all), so there's no delimiter to stop at. Capping at three space-separated words
+// is what actually bounds the match: the real confirmed sample's name is exactly
+// "ALI A**** M******" (3 words), and the field that follows it, "رقم" ("number"), is
+// itself a bare word with no delimiter -- a 4th word cap would swallow it too.
+const NAME_TAIL = "([\\p{L}][\\p{L}*.'-]*(?:\\s+[\\p{L}][\\p{L}*.'-]*){0,2})";
+
+// Confirmed against the same real outgoing-transfer sample OUTGOING_ACCOUNT_RE cites:
+// the recipient's name sits directly after "إلى" ("to"), separate from the "من
+// بطاقتكم" (from your card) marker that establishes the direction. No collision
+// between the two: this only ever looks for "الي"/"علي"/"to", never "من".
+const OUTGOING_PARTY_RE = new RegExp(`(?<![\\p{L}\\p{N}])(?:الي|علي|to)\\s+${NAME_TAIL}`, 'iu');
+
+// The presumed incoming mirror of OUTGOING_PARTY_RE -- an incoming transfer's sender
+// name after "من" ("from"). Unlike the outgoing case, this is *not yet* confirmed
+// against a real incoming-transfer sample with a named sender, only inferred from the
+// bank's outgoing format; treat a match here as best-effort; extractTransferParty's
+// caller falls back to the raw message when it comes back null. Safe from colliding
+// with the direction marker itself: INCOMING_ACCOUNT_RE never uses "من", only
+// "ل"/"الي"/"علي" + account noun, so any "من" in an incoming message is unrelated to it.
+const INCOMING_PARTY_RE = new RegExp(`(?<![\\p{L}\\p{N}])(?:من|from)\\s+${NAME_TAIL}`, 'iu');
+
+/**
+ * The other party on a transfer -- who you sent money to (outgoing) or received it
+ * from (incoming) -- read from the same preposition + name pattern the bank's SMS
+ * already uses to say so, rather than the transaction note staying the raw SMS text.
+ * Returns null (caller keeps its existing raw-message fallback) when the direction is
+ * unknown or the message doesn't contain a recognizable name in that position.
+ */
+export function extractTransferParty(text: string, direction: 'in' | 'out' | null): string | null {
+  if (!direction) return null;
+  const normalized = normalize(text);
+  const pattern = direction === 'out' ? OUTGOING_PARTY_RE : INCOMING_PARTY_RE;
+  const match = pattern.exec(normalized);
+  return match ? match[1].trim() : null;
+}
+
 export function detectType(text: string): TransactionType {
   // The preposition on "your card/account" is a more specific signal than any single
   // keyword below, and is what actually distinguishes an incoming from an outgoing
