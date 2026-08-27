@@ -263,7 +263,7 @@ export function Home() {
       )}
 
       {showAddCard && (
-        <AddCardSheet cards={cards} currency={currency} onAdd={addCard} onClose={() => setShowAddCard(false)} />
+        <AddCardSheet cards={cards} currency={currency} onSubmit={addCard} onClose={() => setShowAddCard(false)} />
       )}
     </div>
   );
