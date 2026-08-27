@@ -61,9 +61,13 @@ Deno.serve(async (req: Request) => {
     .select('id, name')
     .or(`user_id.eq.${profile.id},is_preset.eq.true`);
 
-  const parsed = parseTransaction(message, categoryRows ?? []);
+  // Strict mode: reject a message unless it has both a currency-adjacent amount and an
+  // actual transaction verb/direction, not just any number next to a currency code --
+  // a promo SMS quoting a discount cap ("capped at EGP 5,000") has the latter without
+  // the former and would otherwise be booked as a real expense.
+  const parsed = parseTransaction(message, categoryRows ?? [], { strict: true });
   if (!parsed) {
-    return textResponse("Couldn't find an amount in that message — nothing logged.");
+    return textResponse("Doesn't look like a real transaction — nothing logged.");
   }
 
   // Bank SMS usually name the card ("ending 1234"). Last four digits are unique

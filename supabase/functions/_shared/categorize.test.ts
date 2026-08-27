@@ -4,6 +4,7 @@ import {
   detectDirection,
   detectType,
   extractCardLast4,
+  hasTransactionVerb,
   looksLikeInstantTransfer,
   looksLikeTransfer,
   matchCardByPhrase,
@@ -288,6 +289,70 @@ describe('parseTransaction', () => {
     expect(result?.amount).toBe(100);
     expect(result?.type).toBe('expense');
     expect(result?.cardLast4).toBeNull();
+  });
+
+  describe('strict mode', () => {
+    it('rejects a real promotional SMS that quotes a currency-adjacent amount', () => {
+      // Real sample: a Breadfast promo. "capped at EGP 5,000" is a currency-adjacent
+      // number, so non-strict parsing books it as a fake EGP 5,000 expense -- confirmed
+      // as a live bug before this gate existed. No transaction verb anywhere is what
+      // actually distinguishes this from a real transaction notification.
+      const sms =
+        'Get 25% OFF, capped at EGP 5,000, on Fragrances and Beauty with code BTG25. ' +
+        'Stock up on your beauty essentials and get everything delivered in an hour or ' +
+        'less. Offer is valid today only. app.breadfast.com';
+      expect(parseTransaction(sms, categories, { strict: true })).toBeNull();
+      // Confirms it's booked as a real (wrong) transaction without the gate.
+      expect(parseTransaction(sms, categories)).toEqual({
+        amount: 5000,
+        type: 'expense',
+        category: null,
+        cardLast4: null,
+      });
+    });
+
+    it('still accepts every real transaction sample confirmed so far', () => {
+      const realSamples = [
+        'Card ending 4821 debited EGP 250.00 at CARREFOUR',
+        'EGP 8,000 credited to card ending 1234 - salary',
+        'تم إضافة تحويل لحظي لبطاقتكم مسبقة الدفع بمبلغ 100.00 جم من SOME PERSON رقم مرجعي 627260319444',
+        'تم خصم 150 EGP من بطاقة المدفوعة مقدما رقم 6238 باستخدام Mobile Payment عند PAYMOB',
+        'تم تنفيذ تحويل لحظي من بطاقتكم مسبقة الدفع بمبلغ 100.00 جم إلى ALI A**** M******',
+      ];
+      for (const sms of realSamples) {
+        expect(parseTransaction(sms, categories, { strict: true })).not.toBeNull();
+      }
+    });
+
+    it('rejects a message with a number but no currency token at all (e.g. an OTP)', () => {
+      expect(parseTransaction('Your verification code is 483920', categories, { strict: true })).toBeNull();
+    });
+
+    it('rejects an ambiguous ("تحويل" with no resolvable direction) transfer rather than guessing', () => {
+      expect(parseTransaction('تحويل بمبلغ 100 جم', categories, { strict: true })).toBeNull();
+    });
+  });
+});
+
+describe('hasTransactionVerb', () => {
+  it('is true for a message with a resolvable transfer direction', () => {
+    expect(hasTransactionVerb('تم إضافة تحويل لحظي لبطاقتكم بمبلغ 100.00 جم')).toBe(true);
+  });
+
+  it('is true for a message with an expense keyword', () => {
+    expect(hasTransactionVerb('Card ending 4821 debited EGP 250.00')).toBe(true);
+  });
+
+  it('is true for a message with an income keyword', () => {
+    expect(hasTransactionVerb('EGP 8,000 credited to your account')).toBe(true);
+  });
+
+  it('is false for a promotional message with no transaction verb', () => {
+    expect(hasTransactionVerb('Get 25% OFF, capped at EGP 5,000, on Fragrances and Beauty')).toBe(false);
+  });
+
+  it('is false for an ambiguous transfer with no resolvable direction', () => {
+    expect(hasTransactionVerb('تحويل بمبلغ 100 جم')).toBe(false);
   });
 });
 

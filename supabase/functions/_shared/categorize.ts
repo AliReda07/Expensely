@@ -346,9 +346,28 @@ export function detectCategory(text: string, categories: CategoryRow[], type: Tr
   return null;
 }
 
-export function parseTransaction(text: string, categories: CategoryRow[]): ParsedTransaction | null {
-  const amount = parseAmount(text);
+/**
+ * Whether the message contains an actual transaction signal -- a resolved direction
+ * (see detectDirection) or an income/expense verb -- as opposed to merely containing a
+ * number next to a currency code. A promo SMS quoting a discount cap ("capped at EGP
+ * 5,000") has no such signal at all, which is exactly what distinguishes it from a real
+ * transaction notification.
+ */
+export function hasTransactionVerb(text: string): boolean {
+  if (detectDirection(text) !== null) return true;
+  const normalized = normalize(text);
+  return INCOME_KEYWORDS.some((k) => containsWord(normalized, k)) || EXPENSE_KEYWORDS.some((k) => containsWord(normalized, k));
+}
+
+export function parseTransaction(
+  text: string,
+  categories: CategoryRow[],
+  opts: { strict?: boolean } = {},
+): ParsedTransaction | null {
+  const amount = parseAmount(text, { requireCurrency: opts.strict });
   if (amount === null) return null;
+
+  if (opts.strict && !hasTransactionVerb(text)) return null;
 
   const type = detectType(text);
   const category = detectCategory(text, categories, type);
