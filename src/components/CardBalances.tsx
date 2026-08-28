@@ -1,5 +1,6 @@
 ﻿import { CreditCard, Plus, Wallet } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
+import type { CardDue } from '../hooks/usePaymentDue';
 import type { Card } from '../types';
 
 type SelectedAccount = 'total' | 'cash' | string;
@@ -13,6 +14,7 @@ interface Row {
   balance: number;
   spent: number;
   creditLimit: number | null;
+  due: CardDue | undefined;
 }
 
 export function CardBalances({
@@ -25,6 +27,7 @@ export function CardBalances({
   selected,
   onSelect,
   onAddCard,
+  dueByCard,
 }: {
   cards: Card[];
   balanceByCard: Map<string, number>;
@@ -35,6 +38,8 @@ export function CardBalances({
   selected: SelectedAccount;
   onSelect: (account: SelectedAccount) => void;
   onAddCard: () => void;
+  /** Cards currently within their reminder window (T-7..T-1), keyed by card id. */
+  dueByCard?: Map<string, CardDue>;
 }) {
   const rows: Row[] = [
     ...cards.map((c) => ({
@@ -46,6 +51,7 @@ export function CardBalances({
       balance: balanceByCard.get(c.id) ?? 0,
       spent: spentByCard.get(c.id) ?? 0,
       creditLimit: c.credit_limit,
+      due: dueByCard?.get(c.id),
     })),
     {
       key: 'cash',
@@ -56,6 +62,7 @@ export function CardBalances({
       balance: cashBalance,
       spent: cashSpent,
       creditLimit: null,
+      due: undefined,
     },
   ];
 
@@ -110,9 +117,23 @@ export function CardBalances({
                       </span>
                     )}
                   </span>
-                  <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
-                    {formatCurrency(row.spent, currency)} spent this month
-                  </p>
+                  {row.due ? (
+                    <p
+                      className={`truncate text-xs font-medium tabular-nums ${
+                        row.due.severity === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {row.due.daysUntilDue === 0
+                        ? 'Payment due today'
+                        : row.due.daysUntilDue === 1
+                          ? 'Payment due tomorrow'
+                          : `Payment due in ${row.due.daysUntilDue} days`}
+                    </p>
+                  ) : (
+                    <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
+                      {formatCurrency(row.spent, currency)} spent this month
+                    </p>
+                  )}
                 </span>
                 <span className="text-right">
                   <span

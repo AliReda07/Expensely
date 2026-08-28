@@ -1,12 +1,13 @@
 ﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CreditCard, Layers, Pencil, Plus, Wallet } from 'lucide-react';
+import { CreditCard, Layers, Pencil, Plus, TriangleAlert, Wallet, X } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
+import { usePaymentDue } from '../hooks/usePaymentDue';
 import { BalanceCard, type AccountOption } from '../components/BalanceCard';
 import { CardBalances } from '../components/CardBalances';
 import { AddCardSheet } from '../components/AddCardSheet';
@@ -46,6 +47,18 @@ export function Home() {
     end,
   });
   const { transactions: recent, refetch: refetchRecent } = useTransactions(categories, { limit: 5 });
+
+  // A 35-day lookback comfortably covers the widest possible gap between "today" and
+  // a previous due date (up to ~31 days) for any card currently inside its reminder
+  // window, even when that window crosses a calendar-month boundary.
+  const paymentCheckStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 35);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const { transactions: paymentCheckTransactions } = useTransactions(categories, { start: paymentCheckStart });
+  const { dueCards, bannerCards, dismiss } = usePaymentDue(cards, balanceByCard, paymentCheckTransactions);
+  const dueByCard = new Map(dueCards.map((d) => [d.card.id, d]));
 
   const currency = profile?.currency ?? 'EGP';
   const monthExpenses = monthTransactions.filter((t) => t.type === 'expense');
@@ -144,6 +157,27 @@ export function Home() {
         </div>
       ) : (
         <>
+          {bannerCards.length > 0 && (
+            <div className="space-y-2 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
+              {bannerCards.map((d) => (
+                <div key={d.card.id} className="flex items-center gap-3">
+                  <TriangleAlert size={18} className="shrink-0 text-red-600 dark:text-red-400" />
+                  <p className="min-w-0 flex-1 text-sm text-red-800 dark:text-red-300">
+                    <span className="font-semibold">{d.card.name}</span> payment of {formatCurrency(d.owed, currency)} is
+                    due tomorrow.
+                  </p>
+                  <button
+                    onClick={() => void dismiss(d)}
+                    aria-label={`Dismiss ${d.card.name} payment reminder`}
+                    className="-m-1.5 shrink-0 rounded-full p-1.5 text-red-600 transition-all hover:bg-red-100 active:scale-90 dark:text-red-400 dark:hover:bg-red-500/20"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Keying on the selection remounts the card, so its edit/error state never
               leaks between accounts when switching. */}
           <BalanceCard
@@ -168,6 +202,7 @@ export function Home() {
             selected={resolvedAccount}
             onSelect={setSelectedAccount}
             onAddCard={() => setShowAddCard(true)}
+            dueByCard={dueByCard}
           />
         </>
       )}

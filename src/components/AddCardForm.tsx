@@ -30,6 +30,7 @@ export function AddCardForm({
   const [type, setType] = useState<CardType>(card?.type ?? 'debit');
   const [startingBalance, setStartingBalance] = useState(card ? String(card.starting_balance) : '');
   const [creditLimit, setCreditLimit] = useState(card?.credit_limit != null ? String(card.credit_limit) : '');
+  const [paymentDueDay, setPaymentDueDay] = useState(card?.payment_due_day != null ? String(card.payment_due_day) : '');
   const [bankSender, setBankSender] = useState(card?.bank_sender ?? '');
   const [smsMatchPhrases, setSmsMatchPhrases] = useState<string[]>(card?.sms_match_phrases ?? []);
   const [color, setColor] = useState(card?.color ?? CARD_SWATCHES[0]);
@@ -54,6 +55,14 @@ export function AddCardForm({
       setError('Credit limit must be a valid, non-negative number.');
       return;
     }
+    if (
+      type === 'credit' &&
+      paymentDueDay.trim() &&
+      (Number.isNaN(Number(paymentDueDay)) || Number(paymentDueDay) < 1 || Number(paymentDueDay) > 31)
+    ) {
+      setError('Payment due day must be between 1 and 31.');
+      return;
+    }
 
     setError(null);
     setSaving(true);
@@ -66,6 +75,7 @@ export function AddCardForm({
       credit_limit: type === 'credit' && creditLimit.trim() ? Number(creditLimit) : null,
       bank_sender: bankSender.trim() || null,
       sms_match_phrases: smsMatchPhrases,
+      payment_due_day: type === 'credit' && paymentDueDay.trim() ? Number(paymentDueDay) : null,
     });
     setSaving(false);
 
@@ -80,6 +90,7 @@ export function AddCardForm({
       setCreditLimit('');
       setBankSender('');
       setSmsMatchPhrases([]);
+      setPaymentDueDay('');
       setType('debit');
     }
     onDone?.();
@@ -180,6 +191,24 @@ export function AddCardForm({
           placeholder={`Credit limit (${currency}) — optional`}
           className="w-full rounded-xl border border-stone-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
+      )}
+
+      {type === 'credit' && (
+        <div>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Payment due day of the month, optional"
+            maxLength={2}
+            value={paymentDueDay}
+            onChange={(e) => setPaymentDueDay(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            placeholder="Payment due day (1–31) — optional"
+            className="w-full rounded-xl border border-stone-200 px-3 py-2.5 tabular-nums outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
+          />
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+            Set this to get reminded 7 days and 1 day before the bill is due. Leave blank for no reminders.
+          </p>
+        </div>
       )}
 
       <p className="text-xs text-stone-500 dark:text-stone-400">

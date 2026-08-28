@@ -36,6 +36,9 @@ export interface Card {
    *  because the same bank can describe the same card differently across message types
    *  (e.g. a transfer notice vs. a purchase notice). */
   sms_match_phrases: string[];
+  /** Credit cards only: the day of the month (1-31) the bill is due. Null means the
+   *  card opts out of payment reminders entirely -- there's no separate toggle. */
+  payment_due_day: number | null;
 }
 
 export interface Transaction {
