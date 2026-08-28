@@ -98,7 +98,10 @@ export function BalanceCard({
     void commitSave(amount);
   };
 
-  const isNegative = variant === 'liability' ? balance > 0 : balance < 0;
+  // Owing money on a credit card isn't an alarm state the way an overdrawn debit/cash
+  // balance is -- it's just what the card is for -- so only 'asset' going negative
+  // gets the red treatment.
+  const isNegative = variant === 'asset' && balance < 0;
   // With a known limit, the sublabel's color scales along the same green->amber->red
   // ramp budgets use, so "owe a little, plenty of headroom" reads calmer than "over
   // the limit" instead of both getting an identical alarm color.

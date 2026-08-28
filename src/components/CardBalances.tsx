@@ -138,9 +138,7 @@ export function CardBalances({
                 <span className="text-right">
                   <span
                     className={`block text-sm font-semibold tabular-nums ${
-                      (isCredit ? row.balance > 0 : row.balance < 0)
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-stone-800 dark:text-stone-100'
+                      !isCredit && row.balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-800 dark:text-stone-100'
                     }`}
                   >
                     {formatCurrency(row.balance, currency)}
