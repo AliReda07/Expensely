@@ -1,5 +1,6 @@
 ﻿import { CreditCard, Plus, Wallet } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
+import { daysUntilDue } from '../lib/dueDate';
 import type { CardDue } from '../hooks/usePaymentDue';
 import type { Card } from '../types';
 
@@ -14,7 +15,14 @@ interface Row {
   balance: number;
   spent: number;
   creditLimit: number | null;
+  paymentDueDay: number | null;
   due: CardDue | undefined;
+}
+
+function daysUntilDueLabel(days: number): string {
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  return `Due in ${days} days`;
 }
 
 export function CardBalances({
@@ -51,6 +59,7 @@ export function CardBalances({
       balance: balanceByCard.get(c.id) ?? 0,
       spent: spentByCard.get(c.id) ?? 0,
       creditLimit: c.credit_limit,
+      paymentDueDay: c.payment_due_day,
       due: dueByCard?.get(c.id),
     })),
     {
@@ -62,6 +71,7 @@ export function CardBalances({
       balance: cashBalance,
       spent: cashSpent,
       creditLimit: null,
+      paymentDueDay: null,
       due: undefined,
     },
   ];
@@ -128,6 +138,13 @@ export function CardBalances({
                         : row.due.daysUntilDue === 1
                           ? 'Payment due tomorrow'
                           : `Payment due in ${row.due.daysUntilDue} days`}
+                    </p>
+                  ) : row.paymentDueDay != null ? (
+                    // Outside the 7-day reminder window (or already paid/zero balance, so no
+                    // active reminder) -- still worth a plain, unalarmed heads-up of when the
+                    // bill is next due, rather than only ever showing this in the final week.
+                    <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
+                      {daysUntilDueLabel(daysUntilDue(row.paymentDueDay, new Date()))}
                     </p>
                   ) : (
                     <p className="truncate text-xs tabular-nums text-stone-600 dark:text-stone-400">
