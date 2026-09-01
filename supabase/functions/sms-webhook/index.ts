@@ -1,10 +1,14 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2.112.3';
 import {
+  computePromotedPhrases,
   detectDirection,
   extractTransferParty,
+  instantTransferFee,
   looksLikeInstantTransfer,
   looksLikeTransfer,
   matchCardByPhrase,
+  matchesPromotedPhrase,
+  matchesTrustedSender,
   parseSmsPayload,
   parseTransaction,
 } from '../_shared/categorize.ts';
@@ -89,59 +93,66 @@ Deno.serve(async (req: Request) => {
     .select('id, name')
     .or(`user_id.eq.${profile.id},is_preset.eq.true`);
 
-  // Strict mode: reject a message unless it has both a currency-adjacent amount and an
-  // actual transaction verb/direction, not just any number next to a currency code --
-  // a promo SMS quoting a discount cap ("capped at EGP 5,000") has the latter without
-  // the former and would otherwise be booked as a real expense.
-  const parsed = parseTransaction(message, categoryRows ?? [], { strict: true });
+  // Fetched before parsing rather than after: a saved phrase does double duty -- it
+  // resolves the card, and it is also the user's own declaration that this wording is a
+  // real transaction template, which parseTransaction needs to know before it decides
+  // whether to reject the message outright.
+  const { data: cardRows } = await supabaseAdmin
+    .from('cards')
+    .select('id, name, last4, bank_sender, sms_match_phrases')
+    .eq('user_id', profile.id);
+  const userCards = cardRows ?? [];
+  const phraseCardId = matchCardByPhrase(message, userCards);
+
+  // Cross-user counterpart to the phrase check above: when several different users have
+  // each typed the same wording into their own card's phrase field, that agreement is
+  // itself a signal (see computePromotedPhrases) -- so it also waives the gate for a user
+  // who never typed it themselves. Only the phrase label and who added it are read here
+  // (`select` below is deliberately narrow) -- never anyone's SMS message content, and a
+  // promoted phrase still never resolves *which* card a message belongs to for someone
+  // who didn't add it; that stays exactly as narrow as matchCardByPhrase above.
+  const { data: allPhraseRows } = await supabaseAdmin.from('cards').select('user_id, sms_match_phrases');
+  const promotedPhrases = computePromotedPhrases(allPhraseRows ?? []);
+  const isPromotedPhraseMatch = matchesPromotedPhrase(message, promotedPhrases);
+
+  // Third trust signal, same job as the two above but via the sender label instead of
+  // message wording: bank_sender is only ever set by the user themselves (see
+  // AddCardForm), specifically to declare "messages labeled this way are from a real
+  // bank" -- previously that declaration was only ever used to pick a card, never
+  // consulted for whether to log the message at all, so a genuinely bank-sourced message
+  // in unrecognized wording was rejected exactly like an unverified one would be.
+  const hasTrustedSender = matchesTrustedSender(sender, userCards);
+
+  // Strict mode: reject a message unless it has both a currency-adjacent amount and
+  // (an actual transaction verb/direction, a phrase this user or enough other users have
+  // saved, or a sender this user has already vouched for) -- not just any number next to
+  // a currency code. A promo SMS quoting a discount cap ("capped at EGP 5,000") has none
+  // of those and would otherwise be booked as a real expense.
+  const parsed = parseTransaction(message, categoryRows ?? [], {
+    strict: true,
+    bypassVerbGate: phraseCardId !== null || isPromotedPhraseMatch || hasTrustedSender,
+  });
   if (!parsed) {
     return textResponse("Doesn't look like a real transaction — nothing logged.");
   }
 
-  // Bank SMS usually name the card ("ending 1234"). Last four digits are unique
-  // per user, so this resolves to at most one card; an unrecognised or absent
-  // number simply books the transaction as unassigned rather than guessing.
-  let card: { id: string; name: string; last4: string | null } | null = null;
-  if (parsed.cardLast4) {
-    const { data: cardRow } = await supabaseAdmin
-      .from('cards')
-      .select('id, name, last4')
-      .eq('user_id', profile.id)
-      .eq('last4', parsed.cardLast4)
-      .maybeSingle();
-    card = cardRow ?? null;
-  }
-
-  // Fallback for banks that never mention the card digits at all: if the client sent
-  // who the SMS was from and the user has exactly one card registered to that sender,
-  // use it. Never guess between multiple candidates.
+  // Resolution order: the card's own digits are the most specific signal (bank SMS
+  // usually name the card, e.g. "ending 1234", and last four digits are unique per
+  // user); then the SMS sender, for banks that never print the card digits at all, if
+  // the client sent who the SMS was from and the user has exactly one card registered to
+  // that sender; then the phrase matched above, for banks where neither of those is
+  // available. The sender and phrase paths never guess between multiple candidates. An
+  // unrecognised or absent card reference simply books the transaction as unassigned.
+  let card: { id: string; name: string; last4: string | null } | null =
+    parsed.cardLast4 ? (userCards.find((c) => c.last4 === parsed.cardLast4) ?? null) : null;
   if (!card && sender) {
-    const { data: senderMatches } = await supabaseAdmin
-      .from('cards')
-      .select('id, name, last4')
-      .eq('user_id', profile.id)
-      .ilike('bank_sender', sender);
-    if (senderMatches && senderMatches.length === 1) {
+    const senderMatches = userCards.filter((c) => c.bank_sender?.toLowerCase() === sender.toLowerCase());
+    if (senderMatches.length === 1) {
       card = senderMatches[0];
     }
   }
-
-  // Second fallback, for the same problem, that needs no cooperation from the phone
-  // side at all: a phrase unique to this bank's SMS template, matched against the
-  // message body itself. Useful when bank_sender can't be resolved because the phone's
-  // SMS automation has no way to filter by this bank as a sender in the first place.
-  // Fetches every card rather than filtering for a non-empty phrase list server-side --
-  // a user has at most a handful of cards, and matchCardByPhrase already skips any card
-  // with no phrases (an empty array never satisfies its `.some(...)` check).
-  if (!card) {
-    const { data: phraseCandidates } = await supabaseAdmin
-      .from('cards')
-      .select('id, name, last4, sms_match_phrases')
-      .eq('user_id', profile.id);
-    const matchedId = matchCardByPhrase(message, phraseCandidates ?? []);
-    if (matchedId) {
-      card = (phraseCandidates ?? []).find((c) => c.id === matchedId) ?? null;
-    }
+  if (!card && phraseCardId) {
+    card = userCards.find((c) => c.id === phraseCardId) ?? null;
   }
 
   // Visible marker for "this was a transfer", separate from getting income/expense
@@ -162,10 +173,21 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Egyptian instant transfers carry a flat fee the bank never prints in the SMS and never
+  // sends a separate message for (see instantTransferFee in categorize.ts), so the recorded
+  // amount has to be the transfer plus the fee or the app's balance drifts by that fee on
+  // every transfer. The note discloses it explicitly -- a stored amount that doesn't match
+  // the SMS the user can still see in their inbox is otherwise just confusing.
+  const fee = instantTransferFee(message);
+  const amount = fee > 0 ? Math.round((parsed.amount + fee) * 100) / 100 : parsed.amount;
+  if (fee > 0) {
+    note += ` (incl. ${fee.toFixed(2)} fee)`;
+  }
+
   const { error: insertError } = await supabaseAdmin.from('transactions').insert({
     user_id: profile.id,
     type: parsed.type,
-    amount: parsed.amount,
+    amount,
     category_id: parsed.category?.id ?? null,
     card_id: card?.id ?? null,
     date: new Date().toISOString().slice(0, 10),
@@ -176,7 +198,7 @@ Deno.serve(async (req: Request) => {
     return textResponse('Could not log that transaction.', 500);
   }
 
-  const amountText = formatAmount(parsed.amount, profile.currency);
+  const amountText = formatAmount(amount, profile.currency);
   const categoryText = parsed.category ? ` under ${parsed.category.name}` : ' (uncategorized)';
   const cardText = card
     ? ` on ${card.name}`

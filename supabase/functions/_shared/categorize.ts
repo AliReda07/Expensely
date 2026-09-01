@@ -105,6 +105,77 @@ export function matchCardByPhrase(message: string, cards: CardPhraseRow[]): stri
   return matches.length === 1 ? matches[0].id : null;
 }
 
+export interface UserPhraseRow {
+  user_id: string;
+  sms_match_phrases: string[];
+}
+
+// A single user's own phrase (see matchCardByPhrase) only ever helps that user. This is
+// the cross-user counterpart: when several *different* users have independently typed
+// the same wording into their own card's "phrase unique to this bank's SMS" field, that
+// agreement is itself a signal worth acting on for everyone, the same way a built-in
+// word in EXPENSE_KEYWORDS/INCOME_KEYWORDS is -- it just got discovered by usage instead
+// of hand-curated. Deliberately requires >1 user: one person's own phrase is not
+// evidence of anything beyond what matchCardByPhrase already grants them.
+//
+// Note what this counts: the short label text itself (e.g. "IPN transfer sent"), which
+// users type into Settings themselves specifically to be matched -- never the SMS
+// message bodies those phrases get matched against. No user's raw bank SMS is ever read
+// by or attributed to another user anywhere in this flow.
+const PROMOTION_THRESHOLD = 2;
+
+/**
+ * Phrases (normalized) that at least `threshold` distinct users have added to a card of
+ * their own. A user adding the same phrase to two of their own cards only counts once --
+ * it's users agreeing with each other that counts, not raw occurrences.
+ */
+export function computePromotedPhrases(allUserPhrases: UserPhraseRow[], threshold = PROMOTION_THRESHOLD): string[] {
+  const usersByPhrase = new Map<string, Set<string>>();
+  for (const row of allUserPhrases) {
+    for (const rawPhrase of row.sms_match_phrases) {
+      // Lowercased on top of normalize(): matching against a message is already
+      // case-insensitive (containsWord's 'i' flag), so two users typing different
+      // casing of the same English phrase must count as agreement here too.
+      const key = normalize(rawPhrase).toLowerCase();
+      if (!key) continue;
+      if (!usersByPhrase.has(key)) usersByPhrase.set(key, new Set());
+      usersByPhrase.get(key)!.add(row.user_id);
+    }
+  }
+  return [...usersByPhrase.entries()].filter(([, users]) => users.size >= threshold).map(([phrase]) => phrase);
+}
+
+/** Whether the message contains one of the cross-user promoted phrases (see above). */
+export function matchesPromotedPhrase(message: string, promotedPhrases: string[]): boolean {
+  const normalizedMessage = normalize(message);
+  return promotedPhrases.some((phrase) => containsWord(normalizedMessage, phrase));
+}
+
+export interface CardSenderRow {
+  bank_sender: string | null;
+}
+
+/**
+ * Whether the client-supplied `sender` label (see SmsPayload) matches a `bank_sender`
+ * the user already registered on one of their own cards. This is the same trust logic
+ * as a saved phrase, just via a different signal: `bank_sender` is only ever set by the
+ * user themselves, specifically to declare "this label identifies a real bank" -- so a
+ * match here is exactly as strong a declaration as a saved phrase, and should be able to
+ * waive the same verb gate (see parseTransaction's `bypassVerbGate`). It previously
+ * wasn't consulted for that at all, only for picking a card -- after the message had
+ * already been accepted or rejected without it.
+ *
+ * Deliberately `.some(...)`, not "exactly one match": for card *resolution* an ambiguous
+ * sender match must stay unresolved (see the caller's own "never guess" rule), but for
+ * *trust* purposes it doesn't matter which of several cards share that sender -- the
+ * message is still genuinely from a bank the user has told this app to expect messages
+ * from either way.
+ */
+export function matchesTrustedSender(sender: string | null, cards: CardSenderRow[]): boolean {
+  if (!sender) return false;
+  return cards.some((c) => c.bank_sender?.toLowerCase() === sender.toLowerCase());
+}
+
 // Confirmed against a real sample ("تم إضافة تحويل لحظي لبطاقتكم..."). Distinct from
 // TRANSFER_KEYWORDS-style detection elsewhere: this only needs to know "is this worth
 // labeling as a transfer at all", not which direction it went.
@@ -122,12 +193,31 @@ export function looksLikeTransfer(text: string): boolean {
 // real sample: "تحويل لحظي" ("instant transfer"). Deliberately labeled "Instant transfer"
 // rather than "InstaPay" here: a same-bank transfer can use identical wording without
 // touching that rail at all, so asserting the specific brand would sometimes be wrong.
-const INSTANT_TRANSFER_WORDS = ['لحظي', 'فوري'];
+// "ipn"/"instapay" are the exception -- IPN is InstaPay's own abbreviation in its own
+// transfer notices, so unlike the generic wording above it does identify the rail.
+const INSTANT_TRANSFER_WORDS = ['لحظي', 'فوري', 'ipn', 'instapay'];
 
 /** Whether the message describes itself as an instant/real-time transfer. */
 export function looksLikeInstantTransfer(text: string): boolean {
   const normalized = normalize(text);
   return INSTANT_TRANSFER_WORDS.some((word) => containsWord(normalized, word));
+}
+
+// Egyptian instant transfers carry a flat fee the bank never prints in the SMS and never
+// sends a separate message for -- verified against the user's full history: no 0.50
+// transaction and no message mentioning a fee has ever arrived. So the fee cannot be
+// parsed, only inferred, which is why this is deliberately narrow.
+//
+// Both conditions are required. Direction alone is not enough: detectDirection returns
+// 'out' for any message containing "من حسابك"/"من بطاقتكم", which includes ordinary
+// purchase notices -- gating on the instant-transfer signal as well is what stops a POS
+// purchase being charged a phantom fee. And looksLikeInstantTransfer alone is not enough,
+// because an incoming transfer matches it just as well as an outgoing one, and only the
+// sender is billed.
+export const INSTANT_TRANSFER_FEE = 0.5;
+
+export function instantTransferFee(text: string): number {
+  return looksLikeInstantTransfer(text) && detectDirection(text) === 'out' ? INSTANT_TRANSFER_FEE : 0;
 }
 
 const AMOUNT_PATTERN = /\d+(?:,\d{3})*(?:\.\d{1,2})?/;
@@ -199,6 +289,7 @@ const INCOME_KEYWORDS = [
   'deposited',
   'refund',
   'refunded',
+  'reversal',
   'salary',
   'cash in',
   // Arabic. 'اضافه' (normalized from 'إضافة') is confirmed against a real "money added
@@ -221,6 +312,7 @@ const EXPENSE_KEYWORDS = [
   'withdrawal',
   'pos transaction',
   'cash out',
+  'charged',
   // Arabic, standard Egyptian bank vocabulary -- not yet confirmed against a real
   // outgoing-transaction sample from this user. Deliberately excludes the bare word
   // 'دفع' ("pay"), which also appears in non-transactional phrasing like "دفعة مستحقة"
@@ -234,14 +326,42 @@ const EXPENSE_KEYWORDS = [
 // Synonyms for each *preset* category name. Only consulted when the user's own
 // category list actually contains that name (or a case-insensitive match of it) —
 // a renamed or deleted preset simply won't match here, which is the correct behavior.
+// A trailing "*" marks a keyword as suffix-tolerant -- see matchesCategoryKeyword. Applied
+// per-keyword, not blanket: a brand name that continues into more letters is still that
+// brand ("mcdonald*" -> MCDONALDS), but a generic noun that does is usually an unrelated
+// word ("metro" -> METROPOLITAN, "store" -> STORAGE, "steam" -> STEAMER), so those keep the
+// strict (no "*") form deliberately.
+//
+// "market*"/"markt*" are the one deliberate exception to that "generic nouns stay strict"
+// rule: in Egyptian POS strings a merchant token containing "market" is a grocer close to
+// every time, and "markt" is a real truncation of "market" seen in this user's own SMS
+// history, not a typo. A merchant literally named "... MARKETING" would misfile as
+// Groceries under this rule; accepted as a one-tap-to-fix risk.
 const EXPENSE_CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Food: ['restaurant', 'cafe', 'coffee', 'diner', 'eatery', 'kitchen', 'pizza', 'mcdonald', 'kfc', 'starbucks', 'burger', 'bakery'],
-  Groceries: ['supermarket', 'grocery', 'groceries', 'carrefour', 'spinneys', 'hypermarket', 'market'],
-  Transport: ['uber', 'careem', 'taxi', 'fuel', 'petrol', 'gas station', 'metro', 'parking', 'toll'],
-  Shopping: ['amazon', 'noon', 'mall', 'store', 'boutique', 'shop'],
-  Bills: ['electricity', 'water bill', 'internet', 'telecom', 'vodafone', 'orange', 'etisalat', 'utility', 'subscription', 'bill payment'],
-  Entertainment: ['netflix', 'spotify', 'cinema', 'movie', 'steam', 'playstation', 'xbox'],
-  Health: ['pharmacy', 'hospital', 'clinic', 'doctor', 'medical', 'dental'],
+  Food: [
+    'restaurant*', 'cafe*', 'coffee*', 'diner*', 'eatery', 'kitchen', 'pizza*',
+    'mcdonald*', 'kfc', 'starbucks*', 'burger*', 'baker*',
+    // Egyptian chains the user named. "cook door" and "roma pizza" stay as strict phrases
+    // (a bare "cook*" would swallow COOKIES/COOKING; a bare "roma*" would swallow
+    // ROMANIA/ROMANTIC). "two broz" needs both a spaced and a fused entry: "broz*" covers
+    // "TWO BROZ" and "2 BROZ" (the left boundary sits after the space either way), but a
+    // fused "TWOBROZ" has a letter immediately before "broz", which the left-hand boundary
+    // -- never relaxed -- rejects, hence the separate "twobroz*".
+    'buffalo*', 'cook door', 'cookdoor*', 'cilantro*', 'bazooka*', 'broz*', 'twobroz*',
+  ],
+  Groceries: [
+    'supermarket*', 'hypermarket*', 'grocer*', 'market*', 'markt*',
+    'carrefour*', 'spinney*',
+    // Egyptian chains the user named. "el far" is used instead of "mahmoud*" because
+    // Mahmoud is an extremely common personal name -- keying on it would misfile ordinary
+    // person-to-person payments as Groceries.
+    'seoudi*', 'elfar*', 'el far', 'el-far', 'oscar*',
+  ],
+  Transport: ['uber*', 'careem*', 'taxi*', 'fuel*', 'petrol', 'gas station', 'metro', 'parking*', 'toll'],
+  Shopping: ['amazon*', 'noon', 'mall', 'store', 'boutique', 'shop'],
+  Bills: ['electricity', 'water bill', 'internet', 'telecom', 'vodafone', 'orange', 'etisalat', 'utility', 'subscription*', 'bill payment'],
+  Entertainment: ['netflix', 'spotify', 'cinema*', 'movie*', 'steam', 'playstation*', 'xbox'],
+  Health: ['pharmac*', 'hospital*', 'clinic*', 'doctor*', 'medical', 'dental', 'dentist*'],
 };
 
 function escapeRegExp(text: string): string {
@@ -253,6 +373,26 @@ function escapeRegExp(text: string): string {
 // lookarounds give the same "not part of a longer word" guarantee for any script.
 function containsWord(haystack: string, needle: string): boolean {
   return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(needle)}(?![\\p{L}\\p{N}])`, 'iu').test(haystack);
+}
+
+// A category keyword ending in "*" also matches when the merchant name continues past it:
+// "mcdonald*" matches "MCDONALDS". Card networks print merchant names unpunctuated and
+// often pluralised, so containsWord's right-hand word boundary -- correct everywhere else --
+// misses the most common spelling of the most common merchants.
+//
+// Deliberately opt-in per keyword rather than applied to every one of them: a brand name
+// that continues into more letters is still that brand, but a generic noun that does is
+// usually an unrelated word ("metro" -> "metropolitan", "store" -> "storage"), and those
+// have to keep the strict rule. The left-hand boundary is never relaxed, so a keyword still
+// cannot match in the middle of a word.
+//
+// Scoped to detectCategory's keyword loop on purpose. containsWord is also the transaction
+// verb gate and the card-phrase matcher, where a loose match would let a promo SMS through
+// as a real transaction -- a much more expensive mistake than a wrong category.
+function matchesCategoryKeyword(haystack: string, keyword: string): boolean {
+  if (!keyword.endsWith('*')) return containsWord(haystack, keyword);
+  const stem = keyword.slice(0, -1);
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(stem)}`, 'iu').test(haystack);
 }
 
 export function parseAmount(text: string, opts: { requireCurrency?: boolean } = {}): number | null {
@@ -289,6 +429,18 @@ const INCOMING_ACCOUNT_RE = new RegExp(
 // pattern above; only "من" ("from") + one of the account nouns does.
 const OUTGOING_ACCOUNT_RE = new RegExp(`(?<![\\p{L}\\p{N}])من\\s+${ACCOUNT_NOUN}`, 'u');
 
+// English transfer notices name the direction with a verb instead of a preposition on
+// "your card"/"your account" -- confirmed against a real InstaPay/IPN sample: "IPN
+// transfer sent with amount of EGP 330.00 from 3670". Note that sample's "from 3670" is
+// the sender's *own* wallet, so the preposition means the opposite of what the Arabic
+// "من حسابك" rule reads it as; the verb is the only trustworthy signal here.
+//
+// Deliberately requires a transfer word to be present as well (see detectDirection), so
+// a bare "sent"/"received" in unrelated text -- an OTP that was "sent to you", a voucher
+// "received" -- can never set a direction on its own.
+const OUTGOING_TRANSFER_VERBS = ['sent', 'outgoing'];
+const INCOMING_TRANSFER_VERBS = ['received', 'incoming'];
+
 /**
  * Which way money moved relative to *this* card/account, based on the preposition
  * attached to "your card"/"your account" -- not the word "transfer" alone, which says
@@ -298,6 +450,21 @@ export function detectDirection(text: string): 'in' | 'out' | null {
   const normalized = normalize(text);
   if (INCOMING_ACCOUNT_RE.test(normalized)) return 'in';
   if (OUTGOING_ACCOUNT_RE.test(normalized)) return 'out';
+
+  // Transfer + an explicit direction verb. Checked last so the Arabic account-noun
+  // rules above, which are the more specific signal, always win where both could apply.
+  const hasTransferWord = looksLikeTransfer(normalized);
+  // "sent"/"outgoing" are additionally gated by "transaction": some banks phrase the
+  // same outgoing notice around that noun instead of "transfer"/"تحويل" (e.g.
+  // "Transaction sent EGP 100"). Deliberately not a bare TRANSACTION keyword on its
+  // own -- "transaction" alone appears in summaries/inquiries too -- only "transaction"
+  // + an explicit outgoing verb together counts, same reasoning as TRANSFER_WORDS.
+  if ((hasTransferWord || containsWord(normalized, 'transaction')) && OUTGOING_TRANSFER_VERBS.some((v) => containsWord(normalized, v))) {
+    return 'out';
+  }
+  if (hasTransferWord && INCOMING_TRANSFER_VERBS.some((v) => containsWord(normalized, v))) {
+    return 'in';
+  }
   return null;
 }
 
@@ -378,7 +545,7 @@ export function detectCategory(text: string, categories: CategoryRow[], type: Tr
   for (const [canonicalName, keywords] of Object.entries(EXPENSE_CATEGORY_KEYWORDS)) {
     const match = categories.find((c) => c.name.toLowerCase() === canonicalName.toLowerCase());
     if (!match) continue;
-    if (keywords.some((k) => containsWord(normalized, k))) return match;
+    if (keywords.some((k) => matchesCategoryKeyword(normalized, k))) return match;
   }
 
   return null;
@@ -400,12 +567,19 @@ export function hasTransactionVerb(text: string): boolean {
 export function parseTransaction(
   text: string,
   categories: CategoryRow[],
-  opts: { strict?: boolean } = {},
+  opts: { strict?: boolean; bypassVerbGate?: boolean } = {},
 ): ParsedTransaction | null {
   const amount = parseAmount(text, { requireCurrency: opts.strict });
   if (amount === null) return null;
 
-  if (opts.strict && !hasTransactionVerb(text)) return null;
+  // A trusted source the user themselves configured -- a phrase saved on their own card,
+  // a phrase enough other users independently agree on, or a sender label matching a
+  // registered bank_sender -- is a deliberate "this is a real transaction template/source"
+  // declaration, and outranks the built-in verb vocabulary, which by construction only
+  // covers wordings already seen. It waives the verb requirement but NOT the
+  // currency-adjacent amount requirement above: without that, any matching message
+  // carrying a stray number would book a bogus transaction.
+  if (opts.strict && !opts.bypassVerbGate && !hasTransactionVerb(text)) return null;
 
   const type = detectType(text);
   const category = detectCategory(text, categories, type);

@@ -105,8 +105,11 @@ export function SmsAutoLogSheet({
               <p className="mb-2 text-xs text-stone-600 dark:text-stone-400">
                 Go to Settings → Cards, edit that card, and fill in "Phrase unique to this bank's SMS" — a short
                 piece of wording that appears in every text from this bank but no other. No changes to Shortcuts
-                needed for this — it's matched against the message text on our end. Only resolves the card when
-                it's the one card you have with that phrase.
+                needed for this — it's matched against the message text on our end. It resolves the card when
+                it's the one card you have with that phrase, and it also tells us to log the message even if it
+                doesn't use wording we already recognize as a transaction. Because of that second part, make sure
+                the phrase only appears in this bank's transaction messages — if it also shows up in their
+                marketing texts, those will get logged too.
               </p>
 
               <p className="mb-1.5 mt-4 text-xs font-medium text-stone-500 dark:text-stone-400">
