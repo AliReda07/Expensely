@@ -306,11 +306,12 @@ registered sender label), the deploy sequence matters:
 
 ## Known issues found nearby (not part of this change)
 
-- **`'toll'` collides with "toll free".** Egyptian bank SMS routinely end with a toll-free
-  hotline. Any expense whose message says "toll free" and matches no earlier keyword is
-  categorised **Transport** today, before this change. Suggested fix if the user wants it:
-  replace `'toll'` with `'toll gate'`/`'tollgate'`. Needs their sign-off — it is a
-  behaviour change, not a bug fix.
+- **`'toll'` collided with "toll free" — fixed separately.** Egyptian bank SMS routinely
+  end with a toll-free hotline, so any message with no other keyword match would have been
+  categorised Transport. Fixed by replacing `'toll'` with `'toll gate'`/`'tollgate*'`, keyed
+  on the actual charge rather than the bank's own free phone line. See the test describe
+  block `'"toll" no longer matches the bank's own "toll free" hotline text'` in
+  `categorize.test.ts`.
 - **Duplicate logging across profiles.** The 20:30 UTC message on 2026-09-01 was inserted
   twice, from two different `sms_token`s belonging to two different profiles, one second
   apart — one row resolved card 6238, the other stored `card_id: null`. There are 6 profiles

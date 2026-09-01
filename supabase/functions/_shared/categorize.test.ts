@@ -615,6 +615,21 @@ describe('detectCategory merchant keyword suffix matching (the MCDONALDS fix)', 
       expect(detectCategory('Payment to MAHMOUD', categories, 'expense')).toBeNull();
     });
   });
+
+  describe('"toll" no longer matches the bank\'s own "toll free" hotline text', () => {
+    it('does not route a message ending in the toll-free hotline line to Transport', () => {
+      const sms = 'Your Debit Card **5624 had a Successful transaction of EGP 800.00 @Scene cinema, for lost/stolen card call 16607, toll free';
+      expect(detectCategory(sms, categories, 'expense')).toBeNull();
+    });
+
+    it('still matches an actual toll gate charge', () => {
+      expect(detectCategory('EGP 15 at CAIRO TOLL GATE', categories, 'expense')?.name).toBe('Transport');
+    });
+
+    it('matches a fused "TOLLGATE" spelling', () => {
+      expect(detectCategory('Purchase at 6TH OCTOBER TOLLGATE', categories, 'expense')?.name).toBe('Transport');
+    });
+  });
 });
 
 describe('looksLikeTransfer', () => {

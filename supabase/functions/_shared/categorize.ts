@@ -357,7 +357,11 @@ const EXPENSE_CATEGORY_KEYWORDS: Record<string, string[]> = {
     // person-to-person payments as Groceries.
     'seoudi*', 'elfar*', 'el far', 'el-far', 'oscar*',
   ],
-  Transport: ['uber*', 'careem*', 'taxi*', 'fuel*', 'petrol', 'gas station', 'metro', 'parking*', 'toll'],
+  // 'toll' alone would match the "toll free" hotline text nearly every Egyptian bank SMS
+  // ends with (e.g. "for lost/stolen card call 16607, toll free"), miscategorizing any
+  // message that matches no earlier keyword as Transport. 'toll gate'/'tollgate*' key on
+  // the actual charge instead -- a toll road payment, not the bank's own free phone line.
+  Transport: ['uber*', 'careem*', 'taxi*', 'fuel*', 'petrol', 'gas station', 'metro', 'parking*', 'toll gate', 'tollgate*'],
   Shopping: ['amazon*', 'noon', 'mall', 'store', 'boutique', 'shop'],
   Bills: ['electricity', 'water bill', 'internet', 'telecom', 'vodafone', 'orange', 'etisalat', 'utility', 'subscription*', 'bill payment'],
   Entertainment: ['netflix', 'spotify', 'cinema*', 'movie*', 'steam', 'playstation*', 'xbox'],
