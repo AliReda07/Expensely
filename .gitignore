@@ -39,3 +39,8 @@ expense-tracker-ask-workflow.json
 _dbg
 vendor-build
 graphify-out
+
+# Security review write-ups. Kept local: this repo is public, and these name the
+# findings that are still open.
+SECURITY_AUDIT.md
+SECURITY_FIX_PLAN.md
