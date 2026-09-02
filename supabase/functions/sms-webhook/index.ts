@@ -9,6 +9,7 @@ import {
   matchCardByPhrase,
   matchesPromotedPhrase,
   matchesTrustedSender,
+  normalize,
   parseSmsPayload,
   parseTransaction,
 } from '../_shared/categorize.ts';
@@ -136,6 +137,32 @@ Deno.serve(async (req: Request) => {
     return textResponse("Doesn't look like a real transaction — nothing logged.");
   }
 
+  // Backstop against logging the same SMS twice for this account -- e.g. a phone-side
+  // automation retrying a failed POST, or a stray duplicate Shortcuts automation firing on
+  // the same incoming message (confirmed happening in practice: the same bank SMS reached
+  // two different accounts 9ms apart from two different webhook tokens -- this can't catch
+  // that cross-account case, but it does catch the same thing happening to one account).
+  // Keyed on the normalized message text, not the stored `note` -- `note` is rewritten to
+  // "To X"/"From X" for a transfer and loses the raw text, so two genuinely different
+  // transfers to the same person for the same amount would otherwise collide. A five-minute
+  // window is generous for a retry/duplicate delivery without risking suppressing a later,
+  // separately-caused transaction that happens to read identically -- which Egyptian bank
+  // SMS make vanishingly unlikely anyway, since every message bakes in a running balance
+  // figure that changes with every real transaction.
+  const dedupeKey = normalize(message);
+  const dedupeWindowStart = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: recentDuplicate } = await supabaseAdmin
+    .from('transactions')
+    .select('id')
+    .eq('user_id', profile.id)
+    .eq('sms_dedupe_key', dedupeKey)
+    .gte('created_at', dedupeWindowStart)
+    .limit(1)
+    .maybeSingle();
+  if (recentDuplicate) {
+    return textResponse('Already logged this transaction moments ago — skipped duplicate.');
+  }
+
   // Resolution order: the card's own digits are the most specific signal (bank SMS
   // usually name the card, e.g. "ending 1234", and last four digits are unique per
   // user); then the SMS sender, for banks that never print the card digits at all, if
@@ -192,6 +219,7 @@ Deno.serve(async (req: Request) => {
     card_id: card?.id ?? null,
     date: new Date().toISOString().slice(0, 10),
     note,
+    sms_dedupe_key: dedupeKey,
   });
 
   if (insertError) {
