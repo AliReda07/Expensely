@@ -175,9 +175,9 @@ export function AddCardForm({
           className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
         <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-          Advanced alternative to the phrase above — only works if your phone's SMS automation can actually filter
-          by this bank as a sender (many banks send from an alphanumeric ID that iOS can't filter by), and only
-          resolves the card when it's the one card you have from that sender.
+          Alternative to the phrase above — only works if your phone's SMS automation can actually filter by this
+          bank as a sender (Android automation apps generally can; on iOS many banks send from an alphanumeric ID
+          that can't be filtered by), and only resolves the card when it's the one card you have from that sender.
         </p>
       </div>
 

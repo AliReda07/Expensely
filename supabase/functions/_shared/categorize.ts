@@ -60,24 +60,87 @@ export function normalize(text: string): string {
     .trim();
 }
 
-/**
- * The webhook body is either plain text (the original Shortcut setup: just the
- * message) or JSON `{"message": "...", "sender": "..."}` for clients that also
- * forward who sent it. Anything that isn't valid JSON with a string `message`
- * field is treated as plain text, so existing Shortcuts keep working unchanged.
- */
-export function parseSmsPayload(raw: string): SmsPayload {
-  const trimmed = raw.trim();
+function readSmsJson(candidate: string): SmsPayload | null {
   try {
-    const parsed: unknown = JSON.parse(trimmed);
+    const parsed: unknown = JSON.parse(candidate);
     if (parsed && typeof parsed === 'object' && typeof (parsed as { message?: unknown }).message === 'string') {
       const obj = parsed as { message: string; sender?: unknown };
       const sender = typeof obj.sender === 'string' && obj.sender.trim() ? obj.sender.trim() : null;
       return { message: obj.message.trim(), sender };
     }
   } catch {
-    // Not JSON -- fall through to plain text.
+    // Not JSON -- the caller decides what to try next.
   }
+  return null;
+}
+
+/**
+ * Escapes raw newlines/tabs that appear *inside* JSON string literals, leaving the
+ * structural whitespace between tokens alone (escaping that would break a pretty-printed
+ * body instead of fixing it). Quote-aware, and honors backslash escapes so an already
+ * escaped quote doesn't flip the in-string state.
+ */
+function escapeControlCharsInStrings(json: string): string {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+  for (const ch of json) {
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      out += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      out += ch;
+      continue;
+    }
+    if (inString && (ch === '\n' || ch === '\r' || ch === '\t')) {
+      out += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : '\\t';
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+/**
+ * The webhook body is either plain text (the original Shortcut setup: just the
+ * message) or JSON `{"message": "...", "sender": "..."}` for clients that also
+ * forward who sent it. Anything that isn't valid JSON with a string `message`
+ * field is treated as plain text, so existing Shortcuts keep working unchanged.
+ *
+ * The repair pass in the middle exists for Android: the automation apps there
+ * (MacroDroid's HTTP Request action, the open-source SMS-to-URL forwarders) build the
+ * JSON body by pasting the raw message into a template, with no JSON encoder anywhere in
+ * the path. Bank SMS are routinely multi-line, and a literal newline inside a JSON string
+ * is invalid JSON, so those bodies would fall straight through to the plain-text branch --
+ * storing the `{"message":"` scaffolding as part of the note and losing the sender, all
+ * without looking broken, since the amount still parses. That matters much more on Android
+ * than on iOS, where the JSON shape is a rarely used advanced fallback: Android automations
+ * can filter on alphanumeric bank sender IDs, so the sender path (and this body shape) is
+ * the mainstream one there.
+ *
+ * Deliberately does not try to repair unescaped double quotes -- where the string was meant
+ * to end is ambiguous, and guessing wrong mangles a real message. Those keep falling
+ * through to plain text.
+ */
+export function parseSmsPayload(raw: string): SmsPayload {
+  const trimmed = raw.trim();
+
+  const direct = readSmsJson(trimmed);
+  if (direct) return direct;
+
+  if (trimmed.startsWith('{')) {
+    const repaired = readSmsJson(escapeControlCharsInStrings(trimmed));
+    if (repaired) return repaired;
+  }
+
   return { message: trimmed, sender: null };
 }
 

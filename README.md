@@ -13,7 +13,7 @@ Mobile-format expense tracker — React + TypeScript + Vite + Tailwind, installa
 - **History** — full searchable/filterable transaction list with edit & delete, reachable via "View all" on Home
 - **Insights** — category breakdown (pie chart) and a 6-month spending trend, browsable by month
 - **Ask** — a chat page where you type or speak things like *"spent 50 on food"* or *"can I afford a 5000 trip?"*, and an AI agent (built in n8n) logs, corrects, or deletes transactions and answers questions about your spending. See [How the Ask assistant works](#how-the-ask-assistant-n8n-ai-workflow-works) below.
-- **SMS auto-logging** — forward a bank transaction SMS to a private webhook URL (e.g. via an iOS Shortcut) and it's parsed and logged automatically. This path is fully deterministic (no LLM involved) so the same message always produces the same result — see `supabase/functions/sms-webhook`.
+- **SMS auto-logging** — forward a bank transaction SMS to a private webhook URL (e.g. via an iOS Shortcut, or MacroDroid on Android) and it's parsed and logged automatically. This path is fully deterministic (no LLM involved) so the same message always produces the same result — see `supabase/functions/sms-webhook`.
 - **Push notifications** — a real (Web Push) notification when SMS auto-logging books a transaction, so it reaches you even if the app isn't open at the time. Enabled per-device from Settings → Push notifications. See `src/sw.ts` and `supabase/functions/_shared/push.ts`.
 - **Installable PWA** (add to home screen)
 

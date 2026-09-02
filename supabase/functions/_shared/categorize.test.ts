@@ -901,4 +901,38 @@ describe('parseSmsPayload', () => {
       sender: null,
     });
   });
+
+  // Android automation apps paste the raw message straight into a JSON template, so a
+  // multi-line bank SMS produces a body with literal newlines inside the string. Without
+  // the repair pass this silently degraded to plain text, keeping the JSON scaffolding in
+  // the note and dropping the sender.
+  it('recovers message and sender from JSON whose message contains raw newlines', () => {
+    expect(parseSmsPayload('{"message":"EGP 300.00 debited\nfrom card 1234","sender":"HSBC"}')).toEqual({
+      message: 'EGP 300.00 debited\nfrom card 1234',
+      sender: 'HSBC',
+    });
+  });
+
+  it('recovers a pretty-printed body with raw newlines in the message, without breaking its structural newlines', () => {
+    expect(parseSmsPayload('{\n  "message": "EGP 300.00 debited\nfrom card 1234",\n  "sender": "HSBC"\n}')).toEqual({
+      message: 'EGP 300.00 debited\nfrom card 1234',
+      sender: 'HSBC',
+    });
+  });
+
+  it('leaves an already-escaped newline alone rather than double-escaping it', () => {
+    expect(parseSmsPayload('{"message":"EGP 300 debited\\nfrom card 1234"}')).toEqual({
+      message: 'EGP 300 debited\nfrom card 1234',
+      sender: null,
+    });
+  });
+
+  // The repair pass must not swallow the plain-text fallback: an unescaped quote is
+  // ambiguous to repair, so a body it cannot fix has to come back out unchanged.
+  it('still falls back to plain text for a JSON-looking body the repair pass cannot fix', () => {
+    expect(parseSmsPayload('{"message":"EGP 300 "debited" at CARREFOUR"')).toEqual({
+      message: '{"message":"EGP 300 "debited" at CARREFOUR"',
+      sender: null,
+    });
+  });
 });
