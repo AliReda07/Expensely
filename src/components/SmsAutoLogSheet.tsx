@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { Check, Copy, X } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, X } from 'lucide-react';
 import { Sheet } from './Sheet';
 import type { Profile } from '../types';
 
@@ -33,8 +33,19 @@ export function SmsAutoLogSheet({
   // touch the switch. Same user-agent sniffing as useInstallPrompt -- the cost of guessing
   // wrong is one tap, so a rough check is enough.
   const [platform, setPlatform] = useState<Platform>(() => (/Android/i.test(navigator.userAgent) ? 'android' : 'ios'));
+  const [revealed, setRevealed] = useState(false);
 
   const webhookUrl = profile?.sms_token ? `${SUPABASE_URL}/functions/v1/sms-webhook/${profile.sms_token}` : null;
+  // The token in this URL is the only thing standing between a stranger and write access
+  // to this ledger, so the link is treated like a password: masked until deliberately
+  // revealed, which keeps it out of a screenshot or an over-the-shoulder glance taken
+  // while someone is following the setup steps below. Copying never needs the reveal --
+  // the button below always copies the real URL.
+  // Bullets rather than the URL with only its token masked: the field truncates well
+  // before the token would appear, so masking just the token looked identical to showing
+  // it and made the reveal button seem broken. A run of bullets reads as "hidden secret"
+  // at a glance, the way a password field does.
+  const maskedUrl = webhookUrl ? '•'.repeat(32) : null;
 
   const generate = async () => {
     setSaving(true);
@@ -78,10 +89,18 @@ export function SmsAutoLogSheet({
                 <input
                   readOnly
                   aria-label="Your private webhook link"
-                  value={webhookUrl}
-                  onFocus={(e) => e.target.select()}
+                  value={revealed ? webhookUrl : (maskedUrl ?? '')}
+                  onFocus={(e) => revealed && e.target.select()}
                   className="w-full min-w-0 truncate rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-stone-600 outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
                 />
+                <button
+                  onClick={() => setRevealed((r) => !r)}
+                  aria-label={revealed ? 'Hide link' : 'Show link'}
+                  aria-pressed={revealed}
+                  className="shrink-0 rounded-xl bg-stone-100 p-2.5 text-stone-600 transition-transform active:scale-90 dark:bg-stone-700 dark:text-stone-300"
+                >
+                  {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
                 <button
                   onClick={copy}
                   aria-label="Copy link"

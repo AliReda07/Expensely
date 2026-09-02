@@ -71,14 +71,41 @@ describe('SmsAutoLogSheet', () => {
     expect(screen.getByText('{sms_message}')).toBeInTheDocument();
   });
 
-  it('shows the webhook link on both platforms', async () => {
+  // The token is the endpoint's only credential, so it must not sit on screen by default
+  // where a screenshot of the setup steps would carry it away.
+  it('masks the token until the link is deliberately revealed', async () => {
     setUserAgent(ANDROID_UA);
     renderSheet();
 
-    const link = screen.getByLabelText(/private webhook link/i) as HTMLInputElement;
-    expect(link.value).toContain(profile.sms_token!);
+    const masked = screen.getByLabelText(/private webhook link/i) as HTMLInputElement;
+    expect(masked.value).not.toContain(profile.sms_token!);
+    expect(masked.value).toMatch(/^•+$/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show link' }));
+    expect((screen.getByLabelText(/private webhook link/i) as HTMLInputElement).value).toContain(profile.sms_token!);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide link' }));
+    expect((screen.getByLabelText(/private webhook link/i) as HTMLInputElement).value).not.toContain(profile.sms_token!);
+  });
+
+  it('copies the real link even while it is masked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    setUserAgent(ANDROID_UA);
+    renderSheet();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(profile.sms_token!));
+  });
+
+  it('keeps the link masked across a platform switch', async () => {
+    setUserAgent(ANDROID_UA);
+    renderSheet();
 
     await userEvent.click(screen.getByRole('button', { name: 'iPhone' }));
-    expect((screen.getByLabelText(/private webhook link/i) as HTMLInputElement).value).toContain(profile.sms_token!);
+
+    const link = screen.getByLabelText(/private webhook link/i) as HTMLInputElement;
+    expect(link.value).not.toContain(profile.sms_token!);
   });
 });

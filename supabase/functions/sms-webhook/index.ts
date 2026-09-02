@@ -238,12 +238,6 @@ Deno.serve(async (req: Request) => {
   }
 
   const amountText = formatAmount(amount, profile.currency);
-  const categoryText = parsed.category ? ` under ${parsed.category.name}` : ' (uncategorized)';
-  const cardText = card
-    ? ` on ${card.name}`
-    : parsed.cardLast4
-      ? ` (no card saved ending ${parsed.cardLast4})`
-      : '';
 
   // Runs from a phone-side automation, not the app itself, so the user isn't
   // necessarily looking at the app when this happens -- a real push is what
@@ -263,12 +257,23 @@ Deno.serve(async (req: Request) => {
     const notifTitle = `${directionEmoji} ${noteText}`;
     const boldAmount = toBoldUnicode(`${sign}${amountText}`);
     const categoryLabel = parsed.category ? parsed.category.name : 'Uncategorized';
+    // Which card the message resolved to is the fiddliest part of setup to get right
+    // (see the phrase and bank_sender paths above), so the user does need to see it --
+    // but it belongs here, in a notification delivered to their own subscribed devices,
+    // rather than in the HTTP response, which is readable by anyone holding the token.
+    const cardLabel = card ? ` · 💳 ${card.name}` : '';
     await sendPushNotification(supabaseAdmin, subscriptions, {
       title: notifTitle,
-      body: `${boldAmount} · 🏷️ ${categoryLabel}`,
+      body: `${boldAmount} · 🏷️ ${categoryLabel}${cardLabel}`,
       url: '/',
     });
   }
 
-  return textResponse(`Logged ${amountText} ${parsed.type}${categoryText}${cardText}.`);
+  // Deliberately says nothing about which card matched, nor whether a card with the
+  // referenced last 4 digits exists at all. The token in the URL is the whole auth story,
+  // so this body is readable by anyone who has that token -- and anything account-specific
+  // in it turns a write-only endpoint into a way to enumerate the user's card names and
+  // probe which cards they hold. Amount and type are echoed because they were derived from
+  // the message the caller themselves supplied, so they disclose nothing new.
+  return textResponse(`Logged ${amountText} ${parsed.type}.`);
 });
