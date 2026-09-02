@@ -15,7 +15,7 @@ import { sendPushNotification } from '../_shared/push.ts';
 
 // Left open deliberately, unlike ask-proxy: the caller here is a phone-side automation,
 // not a browser, so there is no origin to pin and no ambient credential for a hostile
-// origin to ride -- the token in the URL path is the whole auth story.
+// origin to ride -- the token the caller sends is the whole auth story.
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'content-type, x-sms-token',
@@ -73,7 +73,7 @@ function toBoldUnicode(text: string): string {
 
 // Called by a phone-side automation (e.g. an iOS Shortcut triggered on an
 // incoming bank SMS), not by the app itself, so there is no Supabase session
-// to verify -- the random token in the URL path is what identifies the user.
+// to verify -- the random token in the x-sms-token header is what identifies the user.
 //
 // Parsing and categorization happen locally here (see ../_shared/categorize.ts)
 // rather than round-tripping through an external LLM workflow, so behavior is
