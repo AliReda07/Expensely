@@ -215,6 +215,23 @@ describe('extractTransferParty', () => {
     expect(extractTransferParty(sms, 'out')).toBe('ALI A**** M******');
   });
 
+  it('stops before "رقم" for a name shorter than the word cap, instead of swallowing it as part of the name', () => {
+    // Real transaction from this user's history: the stored note ended up as
+    // "To el t**** رقم" because the 2-word name left one word-cap slot free, which the
+    // old pattern filled with "رقم" (the start of "رقم مرجعي", "reference number") since
+    // nothing told it that field had already begun.
+    const sms =
+      'تم تنفيذ تحويل لحظي من بطاقتكم مسبقة الدفع بمبلغ 1.00 جم إلى el t**** ' +
+      'رقم مرجعي 406121668403 يوم 08-27 الساعة 05:44 للمزيد اتصل بـ 19623';
+    expect(extractTransferParty(sms, 'out')).toBe('el t****');
+  });
+
+  it('reads a 3-word recipient name that is not followed by a رقم field, without truncating it', () => {
+    // The stop-word guard must not fire on ordinary words that merely aren't "رقم" --
+    // this exercises all three word-cap slots with a trailing field absent entirely.
+    expect(extractTransferParty('تم تحويل بمبلغ 100 جم الى Sara Ahmed Mostafa', 'out')).toBe('Sara Ahmed Mostafa');
+  });
+
   it('reads a recipient name after the separated "to" preposition', () => {
     expect(extractTransferParty('تم تحويل مبلغ 100 جم الى Mona Ahmed', 'out')).toBe('Mona Ahmed');
   });

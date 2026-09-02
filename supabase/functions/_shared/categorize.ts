@@ -475,10 +475,16 @@ export function detectDirection(text: string): 'in' | 'out' | null {
 // Bank SMS run the name straight into the next field with a space, not a comma or
 // period ("إلى ALI A**** M****** رقم مرجعي ..." -- no punctuation before "رقم" at
 // all), so there's no delimiter to stop at. Capping at three space-separated words
-// is what actually bounds the match: the real confirmed sample's name is exactly
-// "ALI A**** M******" (3 words), and the field that follows it, "رقم" ("number"), is
-// itself a bare word with no delimiter -- a 4th word cap would swallow it too.
-const NAME_TAIL = "([\\p{L}][\\p{L}*.'-]*(?:\\s+[\\p{L}][\\p{L}*.'-]*){0,2})";
+// bounds the match for the one confirmed 3-word sample, but doesn't help when the name
+// is *shorter* than the cap -- confirmed against a real message with a 2-word name
+// ("...إلى el t**** رقم مرجعي 406121668403..."): the cap alone happily consumes "رقم"
+// as if it were the name's third word, storing "el t**** رقم" as the transaction note.
+// The negative lookahead below is what actually stops at the field boundary regardless
+// of the name's length -- the word-count cap now only guards against a name that's
+// merely long, e.g. a rare four-part name, not against swallowing the next field.
+// Uses the same "(?![\p{L}\p{N}])" trick as containsWord instead of `\b`, which is
+// ASCII-only in JS and would silently never match "رقم" as a whole word at all.
+const NAME_TAIL = "([\\p{L}][\\p{L}*.'-]*(?:\\s+(?!رقم(?![\\p{L}\\p{N}]))[\\p{L}][\\p{L}*.'-]*){0,2})";
 
 // Confirmed against the same real outgoing-transfer sample OUTGOING_ACCOUNT_RE cites:
 // the recipient's name sits directly after "إلى" ("to"), separate from the "من
