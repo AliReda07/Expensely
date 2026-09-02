@@ -1,13 +1,11 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2.112.3';
 import {
-  computePromotedPhrases,
   detectDirection,
   extractTransferParty,
   instantTransferFee,
   looksLikeInstantTransfer,
   looksLikeTransfer,
   matchCardByPhrase,
-  matchesPromotedPhrase,
   matchesTrustedSender,
   normalize,
   parseSmsPayload,
@@ -15,11 +13,19 @@ import {
 } from '../_shared/categorize.ts';
 import { sendPushNotification } from '../_shared/push.ts';
 
+// Left open deliberately, unlike ask-proxy: the caller here is a phone-side automation,
+// not a browser, so there is no origin to pin and no ambient credential for a hostile
+// origin to ride -- the token in the URL path is the whole auth story.
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const MAX_BODY_LENGTH = 2000;
+// The discriminating parts of a bank SMS (amount, running balance) are well inside the
+// first 500 characters, so truncating here doesn't weaken deduplication.
+const MAX_DEDUPE_KEY_LENGTH = 500;
 
 function textResponse(body: string, status = 200) {
   return new Response(body, {
@@ -84,7 +90,16 @@ Deno.serve(async (req: Request) => {
     return textResponse('Unknown token.', 401);
   }
 
-  const { message, sender } = parseSmsPayload(await req.text());
+  // A bank SMS is a few hundred characters at most, so anything past this is either a
+  // misconfigured automation or someone with a valid token pushing junk into storage --
+  // `note` was already capped at 300, but the body itself and the dedupe key below were
+  // not, so an unbounded body could be persisted in full.
+  const rawBody = await req.text();
+  if (rawBody.length > MAX_BODY_LENGTH) {
+    return textResponse('Message too large.', 413);
+  }
+
+  const { message, sender } = parseSmsPayload(rawBody);
   if (!message) {
     return textResponse('Empty message body.', 400);
   }
@@ -105,18 +120,7 @@ Deno.serve(async (req: Request) => {
   const userCards = cardRows ?? [];
   const phraseCardId = matchCardByPhrase(message, userCards);
 
-  // Cross-user counterpart to the phrase check above: when several different users have
-  // each typed the same wording into their own card's phrase field, that agreement is
-  // itself a signal (see computePromotedPhrases) -- so it also waives the gate for a user
-  // who never typed it themselves. Only the phrase label and who added it are read here
-  // (`select` below is deliberately narrow) -- never anyone's SMS message content, and a
-  // promoted phrase still never resolves *which* card a message belongs to for someone
-  // who didn't add it; that stays exactly as narrow as matchCardByPhrase above.
-  const { data: allPhraseRows } = await supabaseAdmin.from('cards').select('user_id, sms_match_phrases');
-  const promotedPhrases = computePromotedPhrases(allPhraseRows ?? []);
-  const isPromotedPhraseMatch = matchesPromotedPhrase(message, promotedPhrases);
-
-  // Third trust signal, same job as the two above but via the sender label instead of
+  // Second trust signal, same job as the one above but via the sender label instead of
   // message wording: bank_sender is only ever set by the user themselves (see
   // AddCardForm), specifically to declare "messages labeled this way are from a real
   // bank" -- previously that declaration was only ever used to pick a card, never
@@ -125,13 +129,20 @@ Deno.serve(async (req: Request) => {
   const hasTrustedSender = matchesTrustedSender(sender, userCards);
 
   // Strict mode: reject a message unless it has both a currency-adjacent amount and
-  // (an actual transaction verb/direction, a phrase this user or enough other users have
-  // saved, or a sender this user has already vouched for) -- not just any number next to
-  // a currency code. A promo SMS quoting a discount cap ("capped at EGP 5,000") has none
-  // of those and would otherwise be booked as a real expense.
+  // (an actual transaction verb/direction, a phrase this user has saved, or a sender this
+  // user has already vouched for) -- not just any number next to a currency code. A promo
+  // SMS quoting a discount cap ("capped at EGP 5,000") has none of those and would
+  // otherwise be booked as a real expense.
+  //
+  // Both waivers are deliberately scoped to declarations *this* user made about their own
+  // cards. An earlier version also honored phrases that two or more different users had
+  // independently saved, on the theory that agreement between strangers was evidence -- but
+  // signup is open, so two accounts (one extra email address) were enough to promote any
+  // phrase and have it waive this gate for every user in the system, which turned promo and
+  // OTP messages carrying an amount into real transactions in other people's ledgers.
   const parsed = parseTransaction(message, categoryRows ?? [], {
     strict: true,
-    bypassVerbGate: phraseCardId !== null || isPromotedPhraseMatch || hasTrustedSender,
+    bypassVerbGate: phraseCardId !== null || hasTrustedSender,
   });
   if (!parsed) {
     return textResponse("Doesn't look like a real transaction — nothing logged.");
@@ -149,7 +160,7 @@ Deno.serve(async (req: Request) => {
   // separately-caused transaction that happens to read identically -- which Egyptian bank
   // SMS make vanishingly unlikely anyway, since every message bakes in a running balance
   // figure that changes with every real transaction.
-  const dedupeKey = normalize(message);
+  const dedupeKey = normalize(message).slice(0, MAX_DEDUPE_KEY_LENGTH);
   const dedupeWindowStart = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const { data: recentDuplicate } = await supabaseAdmin
     .from('transactions')

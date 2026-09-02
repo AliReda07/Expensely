@@ -13,6 +13,19 @@ function formatAmount(amount: number, currency: string): string {
   return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Constant-time over the shared cron secret. A plain `!==` short-circuits at the first
+// differing byte, which leaks the matching prefix through response timing -- barely
+// measurable across a network, but the whole comparison is four lines either way.
+function secretsMatch(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const ab = encoder.encode(a);
+  const bb = encoder.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
@@ -161,7 +174,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const expectedSecret = Deno.env.get('REMINDER_CRON_SECRET');
-  if (!expectedSecret || req.headers.get('X-Reminder-Secret') !== expectedSecret) {
+  if (!expectedSecret || !secretsMatch(req.headers.get('X-Reminder-Secret') ?? '', expectedSecret)) {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 

@@ -105,52 +105,6 @@ export function matchCardByPhrase(message: string, cards: CardPhraseRow[]): stri
   return matches.length === 1 ? matches[0].id : null;
 }
 
-export interface UserPhraseRow {
-  user_id: string;
-  sms_match_phrases: string[];
-}
-
-// A single user's own phrase (see matchCardByPhrase) only ever helps that user. This is
-// the cross-user counterpart: when several *different* users have independently typed
-// the same wording into their own card's "phrase unique to this bank's SMS" field, that
-// agreement is itself a signal worth acting on for everyone, the same way a built-in
-// word in EXPENSE_KEYWORDS/INCOME_KEYWORDS is -- it just got discovered by usage instead
-// of hand-curated. Deliberately requires >1 user: one person's own phrase is not
-// evidence of anything beyond what matchCardByPhrase already grants them.
-//
-// Note what this counts: the short label text itself (e.g. "IPN transfer sent"), which
-// users type into Settings themselves specifically to be matched -- never the SMS
-// message bodies those phrases get matched against. No user's raw bank SMS is ever read
-// by or attributed to another user anywhere in this flow.
-const PROMOTION_THRESHOLD = 2;
-
-/**
- * Phrases (normalized) that at least `threshold` distinct users have added to a card of
- * their own. A user adding the same phrase to two of their own cards only counts once --
- * it's users agreeing with each other that counts, not raw occurrences.
- */
-export function computePromotedPhrases(allUserPhrases: UserPhraseRow[], threshold = PROMOTION_THRESHOLD): string[] {
-  const usersByPhrase = new Map<string, Set<string>>();
-  for (const row of allUserPhrases) {
-    for (const rawPhrase of row.sms_match_phrases) {
-      // Lowercased on top of normalize(): matching against a message is already
-      // case-insensitive (containsWord's 'i' flag), so two users typing different
-      // casing of the same English phrase must count as agreement here too.
-      const key = normalize(rawPhrase).toLowerCase();
-      if (!key) continue;
-      if (!usersByPhrase.has(key)) usersByPhrase.set(key, new Set());
-      usersByPhrase.get(key)!.add(row.user_id);
-    }
-  }
-  return [...usersByPhrase.entries()].filter(([, users]) => users.size >= threshold).map(([phrase]) => phrase);
-}
-
-/** Whether the message contains one of the cross-user promoted phrases (see above). */
-export function matchesPromotedPhrase(message: string, promotedPhrases: string[]): boolean {
-  const normalizedMessage = normalize(message);
-  return promotedPhrases.some((phrase) => containsWord(normalizedMessage, phrase));
-}
-
 export interface CardSenderRow {
   bank_sender: string | null;
 }

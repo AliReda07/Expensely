@@ -9,11 +9,25 @@ interface AskRequestBody {
   categories?: { id: string; name: string }[];
 }
 
+// Pinned to the app's own origin rather than '*'. Not exploitable either way -- auth here
+// is a bearer token, not a cookie, so a hostile origin has no ambient credential to ride --
+// but there is no reason for any other origin to be able to call this at all. Falls back to
+// '*' only when the secret is unset, so a project that hasn't run `supabase secrets set
+// APP_ORIGIN=...` yet keeps working instead of failing in a way that looks like a bug.
+const APP_ORIGIN = Deno.env.get('APP_ORIGIN') ?? '*';
+
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': APP_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  Vary: 'Origin',
 };
+
+// This message is forwarded verbatim into an LLM prompt, and the categories list lands in
+// the same prompt. Both are client-supplied, so without a ceiling any signed-in user can
+// run up the OpenRouter bill by sending megabytes.
+const MAX_MESSAGE_LENGTH = 500;
+const MAX_CATEGORIES = 50;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -64,6 +78,9 @@ Deno.serve(async (req: Request) => {
   if (!message) {
     return jsonResponse({ error: 'Message is required' }, 400);
   }
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return jsonResponse({ error: 'Message is too long.' }, 400);
+  }
 
   // The user's identity comes from the verified session above, not from the client body —
   // n8n never sees the user's access token, only this already-authenticated user_id.
@@ -77,7 +94,7 @@ Deno.serve(async (req: Request) => {
       message,
       user_id: user.id,
       currency: typeof body.currency === 'string' ? body.currency : 'EGP',
-      categories: Array.isArray(body.categories) ? body.categories : [],
+      categories: Array.isArray(body.categories) ? body.categories.slice(0, MAX_CATEGORIES) : [],
     }),
   });
 

@@ -14,18 +14,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&display=swap" rel="stylesheet" />
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('theme-preference');
-          var dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) {
-            document.documentElement.classList.add('dark');
-            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#060814');
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <!-- Render-blocking on purpose: it sets the dark class before first paint. External
+         rather than inline so the CSP can use `script-src 'self'` -- see public/theme-init.js. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

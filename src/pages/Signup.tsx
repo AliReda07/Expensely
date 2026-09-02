@@ -62,12 +62,12 @@ export function Signup() {
         <input
           type="password"
           required
-          minLength={6}
+          minLength={10}
           autoComplete="new-password"
-          aria-label="Password, minimum 6 characters"
+          aria-label="Password, minimum 10 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password (min. 6 characters)"
+          placeholder="Password (min. 10 characters)"
           className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-stone-800 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
         />
         {error && <p className="animate-shake text-sm text-red-600 dark:text-red-400">{error}</p>}

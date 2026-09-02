@@ -9,6 +9,15 @@ create table public.profiles (
   starting_balance numeric not null default 0,
   overall_budget numeric,
   currency text not null default 'EGP',
+  -- The random token in the SMS webhook's URL path. It is the entire auth story for that
+  -- endpoint -- there is no session behind it -- and it is generated client-side, so the
+  -- format is constrained here rather than trusted: without this, a modified client or a
+  -- direct PostgREST PATCH with the public anon key could set it to a single character and
+  -- make that account's ledger writable by anyone who guessed it. The generator produces 24
+  -- CSPRNG bytes as 48 lowercase hex chars; the range is wider than 48 so a differently-sized
+  -- token doesn't break, while still forcing enough entropy to be unguessable.
+  sms_token text unique
+    check (sms_token is null or sms_token ~ '^[0-9a-f]{32,128}$'),
   created_at timestamptz not null default now()
 );
 
@@ -36,6 +45,14 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- The function above is SECURITY DEFINER and lives in the API-exposed public schema, so
+-- without this both anon and authenticated could call it over /rest/v1/rpc/handle_new_user
+-- (Supabase database linter 0028/0029). A direct call errors out on the unassigned `new`
+-- record rather than doing damage, but it runs as its owner and does not belong in the
+-- public API surface. Revoking EXECUTE does not stop the trigger above from firing --
+-- trigger invocation does not check the caller's EXECUTE privilege.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- Categories: preset rows have user_id = null (visible to everyone),
 -- custom rows belong to one user.
 create table public.categories (
@@ -45,7 +62,13 @@ create table public.categories (
   icon text not null,
   color text not null,
   is_preset boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- A preset category is global by definition. Without this, a user could insert their own
+  -- row with is_preset = true (the RLS insert policy only checks user_id), and sms-webhook
+  -- selects `is_preset.eq.true` across all users -- so one account could inject a category
+  -- into every other user's SMS categorization, leaving victims with transactions pointing
+  -- at a category their own select policy forbids them from reading.
+  constraint preset_categories_are_global check (not is_preset or user_id is null)
 );
 
 alter table public.categories enable row level security;

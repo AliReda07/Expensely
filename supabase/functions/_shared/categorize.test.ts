@@ -9,9 +9,7 @@ import {
   instantTransferFee,
   looksLikeInstantTransfer,
   looksLikeTransfer,
-  computePromotedPhrases,
   matchCardByPhrase,
-  matchesPromotedPhrase,
   matchesTrustedSender,
   normalize,
   parseAmount,
@@ -819,75 +817,6 @@ describe('matchCardByPhrase', () => {
   it('does match a short numeric phrase when it appears as its own standalone token', () => {
     const cards = [{ id: 'a', sms_match_phrases: ['19623'] }];
     expect(matchCardByPhrase('للمزيد اتصل بـ 19623', cards)).toBe('a');
-  });
-});
-
-describe('computePromotedPhrases', () => {
-  it('promotes a phrase two distinct users independently added', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: ['IPN transfer sent'] },
-      { user_id: 'u2', sms_match_phrases: ['IPN transfer sent'] },
-    ];
-    expect(computePromotedPhrases(rows)).toContain('IPN transfer sent'.toLowerCase());
-  });
-
-  it('does not promote a phrase only one user has added', () => {
-    const rows = [{ user_id: 'u1', sms_match_phrases: ['IPN transfer sent'] }];
-    expect(computePromotedPhrases(rows)).toEqual([]);
-  });
-
-  it('does not double-count the same user adding the phrase to two of their own cards', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: ['IPN transfer sent'] },
-      { user_id: 'u1', sms_match_phrases: ['IPN transfer sent'] },
-    ];
-    expect(computePromotedPhrases(rows)).toEqual([]);
-  });
-
-  it('merges phrases that are equivalent after normalization (Arabic diacritics/letter forms)', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: ['مسبقة الدفع'] },
-      { user_id: 'u2', sms_match_phrases: ['مَسْبَقَه الدفع'] },
-    ];
-    expect(computePromotedPhrases(rows)).toHaveLength(1);
-  });
-
-  it('merges phrases that only differ in case', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: ['IPN transfer sent'] },
-      { user_id: 'u2', sms_match_phrases: ['ipn TRANSFER sent'] },
-    ];
-    expect(computePromotedPhrases(rows)).toHaveLength(1);
-  });
-
-  it('ignores empty phrase entries', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: [''] },
-      { user_id: 'u2', sms_match_phrases: [''] },
-    ];
-    expect(computePromotedPhrases(rows)).toEqual([]);
-  });
-
-  it('respects a custom threshold', () => {
-    const rows = [
-      { user_id: 'u1', sms_match_phrases: ['Successful transaction'] },
-      { user_id: 'u2', sms_match_phrases: ['Successful transaction'] },
-    ];
-    expect(computePromotedPhrases(rows, 3)).toEqual([]);
-  });
-});
-
-describe('matchesPromotedPhrase', () => {
-  it('matches a promoted phrase inside a message with word boundaries', () => {
-    expect(matchesPromotedPhrase('IPN transfer sent with amount of EGP 330.00', ['ipn transfer sent'])).toBe(true);
-  });
-
-  it('does not match a promoted phrase that only appears as a substring of a longer word', () => {
-    expect(matchesPromotedPhrase('unsentimental EGP 100', ['sent'])).toBe(false);
-  });
-
-  it('returns false when there are no promoted phrases', () => {
-    expect(matchesPromotedPhrase('IPN transfer sent with amount of EGP 330.00', [])).toBe(false);
   });
 });
 

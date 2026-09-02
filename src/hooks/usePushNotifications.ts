@@ -62,15 +62,22 @@ export function usePushNotifications() {
         }));
 
       const json = subscription.toJSON();
-      const { error: dbError } = await supabase.from('push_subscriptions').upsert(
-        {
-          user_id: user.id,
-          endpoint: json.endpoint!,
-          p256dh: json.keys!.p256dh,
-          auth: json.keys!.auth,
-        },
-        { onConflict: 'endpoint' },
-      );
+
+      // Delete-then-insert rather than upsert(onConflict: 'endpoint'). An upsert becomes an
+      // UPDATE when the row already exists, and push_subscriptions deliberately has no
+      // UPDATE policy -- that absence is what stops one account overwriting another's
+      // subscription row, so the fix belongs here and not in a new policy. The delete is
+      // itself RLS-scoped to the caller's own rows, so if another account somehow holds this
+      // endpoint the delete no-ops and the insert fails on the unique constraint, which is
+      // the correct outcome rather than a case to work around.
+      await supabase.from('push_subscriptions').delete().eq('endpoint', json.endpoint!);
+
+      const { error: dbError } = await supabase.from('push_subscriptions').insert({
+        user_id: user.id,
+        endpoint: json.endpoint!,
+        p256dh: json.keys!.p256dh,
+        auth: json.keys!.auth,
+      });
       if (dbError) {
         setError(dbError.message);
         return { error: dbError.message };

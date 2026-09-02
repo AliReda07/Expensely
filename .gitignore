@@ -35,3 +35,7 @@ n8n-ask-setup.sh
 n8n-webhook.env
 expense-tracker-ask-workflow.json
 .mcp.json
+
+_dbg
+vendor-build
+graphify-out
