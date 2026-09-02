@@ -18,9 +18,23 @@ import { sendPushNotification } from '../_shared/push.ts';
 // origin to ride -- the token in the URL path is the whole auth story.
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'content-type, x-sms-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// The token used to live in the URL path, which meant it was written verbatim into every
+// request log -- confirmed in this project's own function_edge_logs, where live tokens sat
+// in plaintext next to each request. A header keeps the credential out of the URL, which
+// is the part of a request that gets logged, proxied and shoulder-surfed.
+//
+// Path tokens are still accepted while existing phone automations are migrated: rejecting
+// them outright would silently stop logging for anyone who hasn't re-done their Shortcut
+// or macro yet, and a stopped expense tracker is not obviously broken until you notice
+// months of missing transactions. Flip this to false once every automation sends the
+// header -- that is the point at which the leak is actually closed, not before.
+const ACCEPT_LEGACY_URL_TOKEN = true;
+
+const TOKEN_HEADER = 'x-sms-token';
 
 const MAX_BODY_LENGTH = 2000;
 // The discriminating parts of a bank SMS (amount, running balance) are well inside the
@@ -73,9 +87,15 @@ Deno.serve(async (req: Request) => {
     return textResponse('Method not allowed', 405);
   }
 
-  const token = new URL(req.url).pathname.split('/').filter(Boolean).pop();
-  if (!token || token === 'sms-webhook') {
-    return textResponse('Missing token in URL.', 400);
+  // Header first, so an automation that sends both (mid-migration, or a copy-pasted setup
+  // that kept the old URL) is treated as migrated rather than falling back to the path.
+  const headerToken = req.headers.get(TOKEN_HEADER)?.trim() || null;
+  const lastSegment = new URL(req.url).pathname.split('/').filter(Boolean).pop();
+  const pathToken = lastSegment && lastSegment !== 'sms-webhook' ? lastSegment : null;
+
+  const token = headerToken ?? (ACCEPT_LEGACY_URL_TOKEN ? pathToken : null);
+  if (!token) {
+    return textResponse(`Missing token. Send it in the ${TOKEN_HEADER} header.`, 400);
   }
 
   const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

@@ -71,41 +71,65 @@ describe('SmsAutoLogSheet', () => {
     expect(screen.getByText('{sms_message}')).toBeInTheDocument();
   });
 
-  // The token is the endpoint's only credential, so it must not sit on screen by default
-  // where a screenshot of the setup steps would carry it away.
-  it('masks the token until the link is deliberately revealed', async () => {
+  // The whole point of moving the token into a header: the URL carries no secret, so it
+  // can be shown, screenshotted and pasted freely.
+  it('shows a URL that contains no token', () => {
     setUserAgent(ANDROID_UA);
     renderSheet();
 
-    const masked = screen.getByLabelText(/private webhook link/i) as HTMLInputElement;
+    const url = screen.getByLabelText('Webhook URL') as HTMLInputElement;
+    expect(url.value).toMatch(/\/functions\/v1\/sms-webhook$/);
+    expect(url.value).not.toContain(profile.sms_token!);
+  });
+
+  // The token is the endpoint's only credential, so it must not sit on screen by default
+  // where a screenshot of the setup steps would carry it away.
+  it('masks the token until it is deliberately revealed', async () => {
+    setUserAgent(ANDROID_UA);
+    renderSheet();
+
+    const masked = screen.getByLabelText('Your private token') as HTMLInputElement;
     expect(masked.value).not.toContain(profile.sms_token!);
     expect(masked.value).toMatch(/^•+$/);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show link' }));
-    expect((screen.getByLabelText(/private webhook link/i) as HTMLInputElement).value).toContain(profile.sms_token!);
+    await userEvent.click(screen.getByRole('button', { name: 'Show token' }));
+    expect((screen.getByLabelText('Your private token') as HTMLInputElement).value).toBe(profile.sms_token);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Hide link' }));
-    expect((screen.getByLabelText(/private webhook link/i) as HTMLInputElement).value).not.toContain(profile.sms_token!);
+    await userEvent.click(screen.getByRole('button', { name: 'Hide token' }));
+    expect((screen.getByLabelText('Your private token') as HTMLInputElement).value).toMatch(/^•+$/);
   });
 
-  it('copies the real link even while it is masked', async () => {
+  it('copies the real token even while it is masked', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     setUserAgent(ANDROID_UA);
     renderSheet();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Copy token' }));
+    expect(writeText).toHaveBeenCalledWith(profile.sms_token);
 
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(profile.sms_token!));
+    await userEvent.click(screen.getByRole('button', { name: 'Copy URL' }));
+    expect(writeText).toHaveBeenLastCalledWith(expect.not.stringContaining(profile.sms_token!));
   });
 
-  it('keeps the link masked across a platform switch', async () => {
+  it('keeps the token masked across a platform switch', async () => {
     setUserAgent(ANDROID_UA);
     renderSheet();
 
     await userEvent.click(screen.getByRole('button', { name: 'iPhone' }));
 
-    const link = screen.getByLabelText(/private webhook link/i) as HTMLInputElement;
-    expect(link.value).not.toContain(profile.sms_token!);
+    expect((screen.getByLabelText('Your private token') as HTMLInputElement).value).toMatch(/^•+$/);
+  });
+
+  // A setup that follows the old instructions keeps working, but the instructions
+  // themselves must teach the header on both platforms or nobody ever migrates.
+  it('tells both platforms to send the token as a header', async () => {
+    setUserAgent(ANDROID_UA);
+    renderSheet();
+
+    expect(screen.getAllByText('x-sms-token').length).toBeGreaterThan(0);
+
+    await userEvent.click(screen.getByRole('button', { name: 'iPhone' }));
+    expect(screen.getAllByText('x-sms-token').length).toBeGreaterThan(0);
   });
 });

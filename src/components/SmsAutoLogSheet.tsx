@@ -27,7 +27,7 @@ export function SmsAutoLogSheet({
   onSaveToken: (token: string) => Promise<{ error: string | null }>;
 }) {
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'url' | 'token' | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Opens on whichever platform the user is reading this on, so most people never have to
   // touch the switch. Same user-agent sniffing as useInstallPrompt -- the cost of guessing
@@ -35,17 +35,18 @@ export function SmsAutoLogSheet({
   const [platform, setPlatform] = useState<Platform>(() => (/Android/i.test(navigator.userAgent) ? 'android' : 'ios'));
   const [revealed, setRevealed] = useState(false);
 
-  const webhookUrl = profile?.sms_token ? `${SUPABASE_URL}/functions/v1/sms-webhook/${profile.sms_token}` : null;
-  // The token in this URL is the only thing standing between a stranger and write access
-  // to this ledger, so the link is treated like a password: masked until deliberately
-  // revealed, which keeps it out of a screenshot or an over-the-shoulder glance taken
-  // while someone is following the setup steps below. Copying never needs the reveal --
-  // the button below always copies the real URL.
-  // Bullets rather than the URL with only its token masked: the field truncates well
-  // before the token would appear, so masking just the token looked identical to showing
-  // it and made the reveal button seem broken. A run of bullets reads as "hidden secret"
-  // at a glance, the way a password field does.
-  const maskedUrl = webhookUrl ? '•'.repeat(32) : null;
+  // The token travels in the x-sms-token header rather than in this URL, so the URL holds
+  // no secret and can be shown, screenshotted and pasted freely. That split is the whole
+  // point of the header: a URL is the part of a request that ends up in server logs and
+  // proxy history, and this project's own logs were carrying live tokens in plaintext
+  // because of it.
+  const webhookUrl = profile?.sms_token ? `${SUPABASE_URL}/functions/v1/sms-webhook` : null;
+  const token = profile?.sms_token ?? null;
+  // The token is treated like a password instead: masked until deliberately revealed, so
+  // working through the setup steps below doesn't leave it on screen. Copy never needs the
+  // reveal. Bullets rather than a partially-masked token -- the field truncates, so
+  // anything subtler looked identical to the unmasked state and made the button seem dead.
+  const maskedToken = token ? '•'.repeat(32) : null;
 
   const generate = async () => {
     setSaving(true);
@@ -55,11 +56,11 @@ export function SmsAutoLogSheet({
     if (result.error) setError(result.error);
   };
 
-  const copy = async () => {
-    if (!webhookUrl) return;
-    await navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copy = async (value: string | null, which: 'url' | 'token') => {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    setCopied(which);
+    setTimeout(() => setCopied(null), 2000);
   };
 
   return (
@@ -78,35 +79,56 @@ export function SmsAutoLogSheet({
           </div>
 
           <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">
-            Forward your bank's transaction SMS to a private link and it'll log the expense automatically — just a
-            small automation on your phone that watches for the message and sends its text here.
+            Forward your bank's transaction SMS here and it'll log the expense automatically — just a small
+            automation on your phone that watches for the message and posts its text to the URL below, with your
+            token as a header.
           </p>
 
           {webhookUrl ? (
             <>
-              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">Your private webhook link</label>
+              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">Webhook URL</label>
+              <div className="mb-3 flex items-center gap-2">
+                <input
+                  readOnly
+                  aria-label="Webhook URL"
+                  value={webhookUrl}
+                  onFocus={(e) => e.target.select()}
+                  className="w-full min-w-0 truncate rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-stone-600 outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                />
+                <button
+                  onClick={() => copy(webhookUrl, 'url')}
+                  aria-label="Copy URL"
+                  className="shrink-0 rounded-xl bg-brand p-2.5 text-white transition-transform active:scale-90"
+                >
+                  {copied === 'url' ? <Check size={18} className="animate-value-pop" /> : <Copy size={18} />}
+                </button>
+              </div>
+
+              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
+                Your private token — treat it like a password
+              </label>
               <div className="mb-2 flex items-center gap-2">
                 <input
                   readOnly
-                  aria-label="Your private webhook link"
-                  value={revealed ? webhookUrl : (maskedUrl ?? '')}
+                  aria-label="Your private token"
+                  value={revealed ? (token ?? '') : (maskedToken ?? '')}
                   onFocus={(e) => revealed && e.target.select()}
                   className="w-full min-w-0 truncate rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-stone-600 outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
                 />
                 <button
                   onClick={() => setRevealed((r) => !r)}
-                  aria-label={revealed ? 'Hide link' : 'Show link'}
+                  aria-label={revealed ? 'Hide token' : 'Show token'}
                   aria-pressed={revealed}
                   className="shrink-0 rounded-xl bg-stone-100 p-2.5 text-stone-600 transition-transform active:scale-90 dark:bg-stone-700 dark:text-stone-300"
                 >
                   {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
                 <button
-                  onClick={copy}
-                  aria-label="Copy link"
+                  onClick={() => copy(token, 'token')}
+                  aria-label="Copy token"
                   className="shrink-0 rounded-xl bg-brand p-2.5 text-white transition-transform active:scale-90"
                 >
-                  {copied ? <Check size={18} className="animate-value-pop" /> : <Copy size={18} />}
+                  {copied === 'token' ? <Check size={18} className="animate-value-pop" /> : <Copy size={18} />}
                 </button>
               </div>
               <button
@@ -114,7 +136,7 @@ export function SmsAutoLogSheet({
                 disabled={saving}
                 className="mb-5 text-xs font-medium text-red-600 transition-opacity active:opacity-60 disabled:opacity-60 dark:text-red-400"
               >
-                Regenerate link (breaks the old one)
+                Regenerate token (breaks the old one)
               </button>
 
               <div className="relative mb-3 flex rounded-xl bg-stone-100 p-1 dark:bg-stone-700">
@@ -153,7 +175,12 @@ export function SmsAutoLogSheet({
                       like this can cover every bank you have.
                     </li>
                     <li>Turn off "Ask Before Running".</li>
-                    <li>Add action "Get Contents of URL" → paste the link above, Method: POST.</li>
+                    <li>Add action "Get Contents of URL" → paste the Webhook URL above, Method: POST.</li>
+                    <li>
+                      Under Headers, add one:{' '}
+                      <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">x-sms-token</code> with your
+                      token above as its value.
+                    </li>
                     <li>Request Body: Text → set it to "Shortcut Input" (the message text).</li>
                     <li>Optionally add "Show Notification" with the URL's response to see the confirmation.</li>
                   </ol>
@@ -168,7 +195,12 @@ export function SmsAutoLogSheet({
                       message-content filter and set it to <em>contains</em> a word every bank text has, e.g. your
                       currency code. One macro like this can cover every bank you have.
                     </li>
-                    <li>Action → Connectivity → "HTTP Request". Method: POST, URL: the link above.</li>
+                    <li>Action → Connectivity → "HTTP Request". Method: POST, URL: the Webhook URL above.</li>
+                    <li>
+                      Add a custom header:{' '}
+                      <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">x-sms-token</code> with your
+                      token above as its value.
+                    </li>
                     <li>
                       Content type: text/plain, and set the body to the magic text{' '}
                       <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">{'{sms_message}'}</code>.
@@ -183,7 +215,9 @@ export function SmsAutoLogSheet({
                     <code className="break-all rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">
                       github.com/bogkonstantin/android_income_sms_gateway_webhook
                     </code>{' '}
-                    (free and open source) works too — point it at the link above and set its JSON template to{' '}
+                    (free and open source) works too — point it at the Webhook URL above, add the same{' '}
+                    <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">x-sms-token</code> header, and
+                    set its JSON template to{' '}
                     <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-stone-700">
                       {'{"message":"%text%","sender":"%from%"}'}
                     </code>
