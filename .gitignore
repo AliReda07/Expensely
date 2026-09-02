@@ -44,3 +44,7 @@ graphify-out
 # findings that are still open.
 SECURITY_AUDIT.md
 SECURITY_FIX_PLAN.md
+
+# Implementation plan for the Android SMS work. Kept local: it maps out internal
+# file paths and reasoning that the public repo has no reason to carry.
+ANDROID_SMS_PLAN.md
