@@ -3,8 +3,10 @@ import { LogOut, Lock, Plus, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { useHousehold, type HouseholdMember } from '../hooks/useHousehold';
 import { useSubscription } from '../hooks/useSubscription';
 import { useCards } from '../hooks/useCards';
+import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
 import { InviteSheet } from '../components/InviteSheet';
+import { FamilyDashboard } from '../components/FamilyDashboard';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { SharingPicker } from '../components/SharingPicker';
 import { MAX_HOUSEHOLD_MEMBERS, SHARE_MODE_OPTIONS, type ShareMode } from '../lib/family';
@@ -25,6 +27,7 @@ export function Family() {
   const { user } = useAuth();
   const { isPremium, loading: planLoading } = useSubscription();
   const { cards } = useCards();
+  const { profile } = useProfile();
   const h = useHousehold();
 
   const [showInvite, setShowInvite] = useState(false);
@@ -168,6 +171,12 @@ export function Family() {
       )}
       {actionError && <p className="text-center text-xs text-red-200 dark:text-red-400">{actionError}</p>}
 
+      {isPremium && (
+        <Section title="This month">
+          <FamilyDashboard currency={profile?.currency ?? 'EGP'} currentUserId={user?.id} />
+        </Section>
+      )}
+
       <Section title={`Members (${memberCount} of ${MAX_HOUSEHOLD_MEMBERS})`}>
         <div className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm shadow-stone-200/60 dark:divide-stone-700 dark:bg-stone-900 dark:shadow-black/40">
           {h.members.map((m) => (
@@ -216,10 +225,6 @@ export function Family() {
           </div>
         </Section>
       )}
-
-      <p className="px-1 text-xs text-stone-100/80 dark:text-stone-400">
-        The family dashboard is coming next. Until then you can set up who is in the family.
-      </p>
 
       <button
         onClick={() => setConfirm('delete')}
