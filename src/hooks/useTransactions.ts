@@ -10,6 +10,8 @@ export interface TransactionInput {
   card_id: string | null;
   date: string;
   note: string | null;
+  /** Omitted when the control isn't shown, so an edit never resets an existing value. */
+  is_private?: boolean;
 }
 
 interface Options {
@@ -28,7 +30,7 @@ export function useTransactions(categories: Category[], options: Options = {}) {
     if (!user) return;
     let query = supabase
       .from('transactions')
-      .select('id, user_id, type, amount, category_id, card_id, date, note, created_at')
+      .select('id, user_id, type, amount, category_id, card_id, date, note, is_private, created_at')
       .eq('user_id', user.id)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });

@@ -3,6 +3,7 @@ import { X, Trash2 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 import { Sheet } from './Sheet';
 import { ConfirmSheet } from './ConfirmSheet';
+import { useHouseholdRole } from '../hooks/useHousehold';
 import type { Card, Category, TransactionType, TransactionWithCategory } from '../types';
 import type { TransactionInput } from '../hooks/useTransactions';
 
@@ -30,6 +31,9 @@ export function AddTransactionSheet({
   onDelete?: (id: string) => Promise<{ error: string | null }>;
 }) {
   const isEditing = Boolean(transaction);
+  // Only an adult family member can hide a transaction from the owner; the control is for them alone.
+  const canHideFromFamily = useHouseholdRole() === 'adult';
+  const [hidden, setHidden] = useState(transaction?.is_private ?? false);
   const expenseCategories = categories.filter((c) => c.name !== 'Income');
   const incomeCategory = categories.find((c) => c.name === 'Income') ?? null;
 
@@ -71,6 +75,7 @@ export function AddTransactionSheet({
       card_id: cardId,
       date,
       note: note.trim() || null,
+      ...(canHideFromFamily ? { is_private: hidden } : {}),
     };
 
     setSaving(true);
@@ -250,6 +255,16 @@ export function AddTransactionSheet({
               className="w-full rounded-xl border border-stone-200 px-3 py-2.5 outline-none transition-colors focus:border-brand dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </label>
+
+          {canHideFromFamily && (
+            <label className="mb-4 flex cursor-pointer items-start gap-2.5 text-sm text-stone-700 dark:text-stone-300">
+              <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} className="mt-0.5 accent-[var(--color-brand)]" />
+              <span>
+                Hide from my family
+                <span className="block text-xs text-stone-500 dark:text-stone-400">The family owner won&apos;t see this transaction.</span>
+              </span>
+            </label>
+          )}
 
           {error && <p className="animate-shake mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
 

@@ -24,6 +24,7 @@ function makeTransaction(overrides: Partial<TransactionWithCategory> = {}): Tran
     card_id: null,
     date: '2026-08-23',
     note: 'Lunch',
+    is_private: false,
     created_at: '2026-08-23T12:00:00Z',
     ...overrides,
   };

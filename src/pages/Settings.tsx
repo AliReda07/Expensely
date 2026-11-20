@@ -1,6 +1,6 @@
 ﻿import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Banknote, Bell, CalendarClock, ChevronRight, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Banknote, Bell, CalendarClock, ChevronRight, Users, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -157,6 +157,16 @@ export function Settings() {
           icon={<Wallet size={18} className="text-emerald-600 dark:text-emerald-400" />}
           iconBg="bg-emerald-50 dark:bg-emerald-500/10"
         />
+        <Link to="/family" className="block">
+          <SettingsRow
+            as="div"
+            label="Family"
+            sublabel="Track spending together. Members join free."
+            icon={<Users size={18} className="text-teal-600 dark:text-teal-400" />}
+            iconBg="bg-teal-50 dark:bg-teal-500/10"
+            trailing={<ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
+          />
+        </Link>
         <Link to="/installments" className="block">
           <SettingsRow
             as="div"

@@ -51,6 +51,8 @@ export interface Transaction {
   card_id: string | null;
   date: string;
   note: string | null;
+  /** Hidden from the family owner. Only meaningful for an adult family member. */
+  is_private: boolean;
   created_at: string;
 }
 
