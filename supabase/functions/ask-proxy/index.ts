@@ -297,7 +297,9 @@ interface ChatMessage {
   tool_call_id?: string;
 }
 
-async function callOpenRouter(messages: ChatMessage[], model: string): Promise<ChatMessage | null> {
+type OpenRouterResult = { message: ChatMessage } | { error: string };
+
+async function callOpenRouter(messages: ChatMessage[], model: string): Promise<OpenRouterResult> {
   const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
     headers: {
@@ -307,9 +309,20 @@ async function callOpenRouter(messages: ChatMessage[], model: string): Promise<C
     body: JSON.stringify({ model, messages, tools: TOOLS, temperature: 0.2 }),
     signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
   });
-  if (!res.ok) return null;
   const data = await res.json().catch(() => null);
-  return data?.choices?.[0]?.message ?? null;
+  if (!res.ok) {
+    // OpenRouter's error text is safe to relay (it never echoes the key) and is the only way
+    // to tell a bad key from no credits from an unknown model.
+    const reason = String(data?.error?.message ?? `HTTP ${res.status}`).slice(0, 200);
+    console.error(`OpenRouter ${res.status} (${model}): ${reason}`);
+    return { error: `OpenRouter ${res.status}: ${reason}` };
+  }
+  const message = data?.choices?.[0]?.message;
+  if (!message) {
+    console.error(`OpenRouter returned no message (${model})`);
+    return { error: 'OpenRouter returned an empty response.' };
+  }
+  return { message };
 }
 
 Deno.serve(async (req: Request) => {
@@ -395,8 +408,9 @@ Deno.serve(async (req: Request) => {
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const reply = await callOpenRouter(messages, model);
-      if (!reply) return jsonResponse({ error: 'Assistant is unavailable.' }, 502);
+      const result = await callOpenRouter(messages, model);
+      if ('error' in result) return jsonResponse({ error: 'Assistant is unavailable.', detail: result.error }, 502);
+      const reply = result.message;
 
       if (!reply.tool_calls || reply.tool_calls.length === 0) {
         return jsonResponse({
@@ -418,8 +432,10 @@ Deno.serve(async (req: Request) => {
         messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
       }
     }
-  } catch {
-    return jsonResponse({ error: 'Assistant is unavailable.' }, 502);
+  } catch (err) {
+    console.error('ask-proxy failed', err);
+    const detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 200) : 'unknown error';
+    return jsonResponse({ error: 'Assistant is unavailable.', detail }, 502);
   }
 
   return jsonResponse({ reply: "I couldn't finish that. Please try rephrasing." });

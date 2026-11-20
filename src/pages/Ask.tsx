@@ -286,7 +286,13 @@ export function Ask() {
         },
       });
 
-      if (invokeError) throw new Error('Assistant is unavailable right now.');
+      if (invokeError) {
+        // The function puts a short reason in the body of its error responses (e.g. which
+        // OpenRouter problem it hit); surface it instead of a bare "unavailable".
+        const body = await (invokeError as { context?: Response }).context?.json().catch(() => null);
+        const detail = typeof body?.detail === 'string' ? ` (${body.detail})` : '';
+        throw new Error(`Assistant is unavailable right now.${detail}`);
+      }
 
       const reply = typeof data?.reply === 'string' ? data.reply : "Done, but I didn't get a reply message.";
       setMessages((prev) => [...prev, { role: 'assistant', text: reply, kind: data?.logged === true || isLogCommand ? 'log' : undefined }]);
