@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
-import { Camera, CheckCircle2, Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
+import { Camera, CheckCircle2, Lock, Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
@@ -9,6 +9,7 @@ import { useBalance } from '../hooks/useBalance';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCards } from '../hooks/useCards';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { useSubscription } from '../hooks/useSubscription';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency, monthRange } from '../lib/format';
 import { NEUTRAL_FALLBACK_COLOR } from '../lib/color';
@@ -106,6 +107,11 @@ export function Ask() {
   const { cards } = useCards();
   const { balance, refetch: refetchBalance } = useBalance(profile?.starting_balance, cards);
   const { budgets } = useBudgets();
+  const { isPremium, trialLeft: rowTrialLeft, loading: planLoading, refetch: refetchPlan } = useSubscription();
+  // The server returns the exact count with every reply; until then, use what the row says.
+  const [liveTrialLeft, setLiveTrialLeft] = useState<number | null>(null);
+  const trialLeft = liveTrialLeft ?? rowTrialLeft;
+  const aiLocked = !planLoading && !isPremium && trialLeft <= 0;
 
   const monthExpenseTotal = useMemo(
     () => transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0),
@@ -264,6 +270,20 @@ export function Ask() {
       }
     }
 
+    // The server enforces this on every request; checking here just spares a round trip and
+    // explains it in the chat instead of as an error.
+    if (aiLocked) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: "You've used your free AI messages. Premium unlocks the assistant and receipt scanning. Quick answers like \"top categories\" and \"can I afford 5000\" still work.",
+        },
+      ]);
+      requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
+      return;
+    }
+
     setSending(true);
 
     try {
@@ -289,11 +309,19 @@ export function Ask() {
       if (invokeError) {
         // The function puts a short reason in the body of its error responses (e.g. which
         // OpenRouter problem it hit); surface it instead of a bare "unavailable".
-        const body = await (invokeError as { context?: Response }).context?.json().catch(() => null);
+        const response = (invokeError as { context?: Response }).context;
+        const body = await response?.json().catch(() => null);
+        if (response?.status === 402) {
+          setLiveTrialLeft(0);
+          void refetchPlan();
+          throw new Error('Your free AI messages are used up.');
+        }
+        if (response?.status === 429) throw new Error('Daily AI limit reached. Try again tomorrow.');
         const detail = typeof body?.detail === 'string' ? ` (${body.detail})` : '';
         throw new Error(`Assistant is unavailable right now.${detail}`);
       }
 
+      if (typeof data?.trial_left === 'number') setLiveTrialLeft(data.trial_left);
       const reply = typeof data?.reply === 'string' ? data.reply : "Done, but I didn't get a reply message.";
       setMessages((prev) => [...prev, { role: 'assistant', text: reply, kind: data?.logged === true || isLogCommand ? 'log' : undefined }]);
       // The backend may have just written a transaction -- refetch rather than trust
@@ -410,6 +438,27 @@ export function Ask() {
         <div ref={listEndRef} />
       </div>
 
+      {aiLocked ? (
+        <div className="mx-4 mb-2 flex gap-3 rounded-2xl border border-stone-200 bg-white p-3.5 dark:border-stone-700 dark:bg-stone-900">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <Lock size={17} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">AI assistant is a Premium feature</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+              Log by chatting, ask about your spending, and scan receipts. Premium is launching soon.
+            </p>
+          </div>
+        </div>
+      ) : (
+        !isPremium &&
+        !planLoading && (
+          <p className="px-4 pb-1 text-center text-xs text-stone-500 dark:text-stone-400">
+            {trialLeft} free AI {trialLeft === 1 ? 'message' : 'messages'} left
+          </p>
+        )
+      )}
+
       <div className="flex gap-2 overflow-x-auto border-t border-stone-100 px-4 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-stone-800">
         {quickReplies.map((q) => (
           <button
@@ -495,7 +544,7 @@ export function Ask() {
             <button
               type="button"
               onClick={() => photoInputRef.current?.click()}
-              disabled={sending}
+              disabled={sending || aiLocked}
               aria-label="Scan a receipt"
               className="shrink-0 rounded-full p-2.5 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 disabled:opacity-50 dark:text-stone-400 dark:hover:bg-stone-800"
             >

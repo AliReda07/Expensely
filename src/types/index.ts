@@ -72,3 +72,11 @@ export interface Profile {
   currency: string;
   sms_token: string | null;
 }
+
+export interface Subscription {
+  user_id: string;
+  plan: 'free' | 'premium';
+  status: 'active' | 'past_due' | 'canceled';
+  current_period_end: string | null;
+  trial_messages_used: number;
+}

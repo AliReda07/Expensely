@@ -14,6 +14,15 @@ const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_MODEL') ?? 'openai/gpt-4o-mini
 // Used when the message carries a receipt photo, so it must accept image input. Defaults to
 // the main model, which is fine for the default (gpt-4o-mini reads images).
 const OPENROUTER_VISION_MODEL = Deno.env.get('OPENROUTER_VISION_MODEL') ?? OPENROUTER_MODEL;
+// Premium subscribers get a stronger model. Both fall back to the standard ones, so premium
+// works (just not "better") until these are set with `supabase secrets set`.
+const OPENROUTER_PREMIUM_MODEL = Deno.env.get('OPENROUTER_PREMIUM_MODEL') ?? OPENROUTER_MODEL;
+const OPENROUTER_PREMIUM_VISION_MODEL = Deno.env.get('OPENROUTER_PREMIUM_VISION_MODEL') ?? OPENROUTER_PREMIUM_MODEL;
+
+// Free accounts get a one-off trial; premium gets a generous daily fair-use ceiling that is
+// there to stop one account running up the bill, not something to advertise.
+const AI_TRIAL_MESSAGES = Number(Deno.env.get('AI_TRIAL_MESSAGES') ?? 10);
+const AI_DAILY_CAP = Number(Deno.env.get('AI_DAILY_CAP') ?? 100);
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 interface AskRequestBody {
@@ -398,6 +407,30 @@ Deno.serve(async (req: Request) => {
   const categories: Category[] = categoryRows ?? [];
   const currency = typeof body.currency === 'string' ? body.currency.slice(0, 8) : 'EGP';
 
+  // Spend one message from the caller's allowance before any model call. The decision is made
+  // in the database, atomically, with the service role -- a client can neither skip nor spoof
+  // it. If the check itself fails we refuse rather than serve for free.
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false },
+  });
+  const { data: allowance, error: allowanceError } = await admin.rpc('consume_ai_message', {
+    p_user: user.id,
+    p_daily_cap: AI_DAILY_CAP,
+    p_trial_cap: AI_TRIAL_MESSAGES,
+  });
+  if (allowanceError || !allowance) {
+    return jsonResponse({ error: 'Assistant is unavailable.' }, 502);
+  }
+  if (!allowance.allowed) {
+    return allowance.reason === 'daily_limit'
+      ? jsonResponse({ error: 'daily_limit', detail: 'Daily AI limit reached. Try again tomorrow.' }, 429)
+      : jsonResponse({ error: 'premium_required', detail: 'Your free AI messages are used up.' }, 402);
+  }
+  const tier: 'premium' | 'trial' = allowance.tier === 'premium' ? 'premium' : 'trial';
+  const trialLeft: number | null = typeof allowance.trial_left === 'number' ? allowance.trial_left : null;
+  // The upstream failing isn't the user's doing, so give the message back.
+  const refund = () => admin.rpc('refund_ai_message', { p_user: user.id, p_tier: tier });
+
   const ctx: ToolContext = { db, userId: user.id, categories };
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt(categories, currency, image !== null) },
@@ -411,19 +444,26 @@ Deno.serve(async (req: Request) => {
         : message,
     },
   ];
-  const model = image ? OPENROUTER_VISION_MODEL : OPENROUTER_MODEL;
+  const model =
+    tier === 'premium'
+      ? image ? OPENROUTER_PREMIUM_VISION_MODEL : OPENROUTER_PREMIUM_MODEL
+      : image ? OPENROUTER_VISION_MODEL : OPENROUTER_MODEL;
   let logged = false;
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const result = await callOpenRouter(messages, model);
-      if ('error' in result) return jsonResponse({ error: 'Assistant is unavailable.', detail: result.error }, 502);
+      if ('error' in result) {
+        await refund();
+        return jsonResponse({ error: 'Assistant is unavailable.', detail: result.error }, 502);
+      }
       const reply = result.message;
 
       if (!reply.tool_calls || reply.tool_calls.length === 0) {
         return jsonResponse({
           reply: typeof reply.content === 'string' && reply.content.trim() ? reply.content.trim() : null,
           logged,
+          trial_left: trialLeft,
         });
       }
 
@@ -442,6 +482,7 @@ Deno.serve(async (req: Request) => {
     }
   } catch (err) {
     console.error('ask-proxy failed', err);
+    await refund();
     const detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 200) : 'unknown error';
     return jsonResponse({ error: 'Assistant is unavailable.', detail }, 502);
   }

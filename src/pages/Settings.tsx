@@ -1,5 +1,5 @@
 ﻿import { useState, type ReactNode } from 'react';
-import { Banknote, Bell, ChevronRight, LogOut, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Banknote, Bell, ChevronRight, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -8,6 +8,7 @@ import { useCards } from '../hooks/useCards';
 import { useTheme } from '../contexts/ThemeContext';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useSubscription } from '../hooks/useSubscription';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { CardsSection } from '../components/CardsSection';
 import { BudgetSheet } from '../components/BudgetSheet';
@@ -29,6 +30,7 @@ export function Settings() {
   const { budgets, setBudget } = useBudgets();
   const { cards, addCard, updateCard, deleteCard } = useCards();
   const { theme, setTheme } = useTheme();
+  const { isPremium, trialLeft, subscription } = useSubscription();
   const { canInstall, canShowIOSInstructions, promptInstall } = useInstallPrompt();
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, enable: enablePush, disable: disablePush } =
     usePushNotifications();
@@ -72,6 +74,21 @@ export function Settings() {
           iconBg="bg-red-50 dark:bg-red-500/10"
           labelClassName="text-red-600 dark:text-red-400"
           showChevron={false}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Plan">
+        <SettingsRow
+          label={isPremium ? 'Premium' : 'Free'}
+          sublabel={
+            isPremium
+              ? subscription?.current_period_end
+                ? `Active until ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                : 'AI assistant and receipt scanning included'
+              : `${trialLeft} free AI ${trialLeft === 1 ? 'message' : 'messages'} left. Premium is launching soon.`
+          }
+          icon={<Sparkles size={18} className="text-brand" />}
+          iconBg="bg-brand/10"
         />
       </SettingsSection>
 
