@@ -48,3 +48,6 @@ SECURITY_FIX_PLAN.md
 # Implementation plan for the Android SMS work. Kept local: it maps out internal
 # file paths and reasoning that the public repo has no reason to carry.
 ANDROID_SMS_PLAN.md
+
+# Premium / business plan. Kept local: pricing and product strategy are not for a public repo.
+PREMIUM_PLAN.md

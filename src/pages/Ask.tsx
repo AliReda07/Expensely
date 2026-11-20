@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { CheckCircle2, Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
+﻿import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { Camera, CheckCircle2, Mic, Send, Sparkles, Square, Trash2 } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
@@ -12,6 +12,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency, monthRange } from '../lib/format';
 import { NEUTRAL_FALLBACK_COLOR } from '../lib/color';
+import { photoToDataUrl } from '../lib/image';
 
 interface CategoryChartDatum {
   name: string;
@@ -23,6 +24,8 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   chart?: CategoryChartDatum[];
+  /** The receipt photo the user attached, shown in their bubble. */
+  image?: string;
   /** Set on assistant replies that came from a message which looked like it logged a
    *  transaction, so a reply that just changed your data reads differently from one
    *  that only answered a question. */
@@ -174,7 +177,7 @@ export function Ask() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: 'Hi! Tell or say things like "spent 50 on food" or "add 8000 income" and I\'ll log it for you.',
+      text: 'Hi! Tell or say things like "spent 50 on food" or "add 8000 income", or snap a receipt with the camera button, and I\'ll log it for you.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -184,6 +187,7 @@ export function Ask() {
   const voiceNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voiceBaseInputRef = useRef('');
   const listEndRef = useRef<HTMLDivElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleTranscript = (text: string) => {
     const base = voiceBaseInputRef.current;
@@ -233,17 +237,17 @@ export function Ask() {
     startListening();
   };
 
-  const sendMessage = async (text: string) => {
-    if (!text || sending) return;
+  const sendMessage = async (text: string, image?: string) => {
+    if ((!text && !image) || sending) return;
 
-    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setMessages((prev) => [...prev, { role: 'user', text: text || 'Receipt', image }]);
     setInput('');
     setError(null);
 
     // A message that also looks like a logging command skips the client-side
     // shortcuts entirely and goes to the backend, even if it happens to contain
     // "afford" or "top categories" -- see LOG_INTENT_PATTERN above.
-    const isLogCommand = looksLikeLogCommand(text);
+    const isLogCommand = !!image || looksLikeLogCommand(text);
 
     if (!isLogCommand && TOP_CATEGORIES_PATTERN.test(text)) {
       setMessages((prev) => [...prev, topCategoriesReply()]);
@@ -276,6 +280,7 @@ export function Ask() {
       const { data, error: invokeError } = await supabase.functions.invoke('ask-proxy', {
         body: {
           message: text,
+          image,
           currency: profile?.currency ?? 'EGP',
           categories: categories.map((c) => ({ id: c.id, name: c.name })),
         },
@@ -284,7 +289,7 @@ export function Ask() {
       if (invokeError) throw new Error('Assistant is unavailable right now.');
 
       const reply = typeof data?.reply === 'string' ? data.reply : "Done, but I didn't get a reply message.";
-      setMessages((prev) => [...prev, { role: 'assistant', text: reply, kind: isLogCommand ? 'log' : undefined }]);
+      setMessages((prev) => [...prev, { role: 'assistant', text: reply, kind: data?.logged === true || isLogCommand ? 'log' : undefined }]);
       // The backend may have just written a transaction -- refetch rather than trust
       // stale numbers fetched on mount, since a later "can I afford X" in the same
       // conversation needs the post-write balance, not the one from before this send.
@@ -294,6 +299,20 @@ export function Ask() {
     } finally {
       setSending(false);
       requestAnimationFrame(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
+    }
+  };
+
+  const handlePhoto = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again (e.g. a retake) still fires onChange.
+    e.target.value = '';
+    if (!file || sending) return;
+    setError(null);
+    try {
+      const dataUrl = await photoToDataUrl(file);
+      await sendMessage(input.trim(), dataUrl);
+    } catch {
+      setError("Couldn't read that photo. Try another one.");
     }
   };
 
@@ -315,7 +334,12 @@ export function Ask() {
         {messages.map((m, i) =>
           m.role === 'user' ? (
             <div key={i} className="animate-row-in flex justify-end">
-              <div className="max-w-[80%] rounded-2xl bg-brand px-3.5 py-2.5 text-sm text-white">{m.text}</div>
+              <div className="max-w-[80%] rounded-2xl bg-brand px-3.5 py-2.5 text-sm text-white">
+                {m.image && (
+                  <img src={m.image} alt="Receipt you sent" className="mb-2 max-h-48 w-full rounded-lg object-cover" />
+                )}
+                {m.text}
+              </div>
             </div>
           ) : (
             <div key={i} className="animate-row-in flex gap-2.5">
@@ -452,6 +476,24 @@ export function Ask() {
               }`}
             >
               <Mic size={20} />
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => void handlePhoto(e)}
+              className="hidden"
+              aria-label="Receipt photo"
+              tabIndex={-1}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={sending}
+              aria-label="Scan a receipt"
+              className="shrink-0 rounded-full p-2.5 text-stone-500 transition-all hover:bg-stone-100 active:scale-90 disabled:opacity-50 dark:text-stone-400 dark:hover:bg-stone-800"
+            >
+              <Camera size={20} />
             </button>
             <input
               type="text"
