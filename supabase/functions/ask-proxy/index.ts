@@ -6,7 +6,9 @@ import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 // even a model that tried to touch another user's row would be refused by the database. Each
 // query also filters on user_id explicitly, so the scoping doesn't hinge on RLS alone.
 
-const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+// Trimmed and de-quoted: `supabase secrets set` from a shell often keeps stray quotes or a
+// trailing newline, which OpenRouter then reports as a missing/invalid auth header.
+const OPENROUTER_API_KEY = (Deno.env.get('OPENROUTER_API_KEY') ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 // Any OpenRouter model id that supports tool calling works here.
 const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_MODEL') ?? 'openai/gpt-4o-mini';
 // Used when the message carries a receipt photo, so it must accept image input. Defaults to
@@ -315,7 +317,13 @@ async function callOpenRouter(messages: ChatMessage[], model: string): Promise<O
     // to tell a bad key from no credits from an unknown model.
     const reason = String(data?.error?.message ?? `HTTP ${res.status}`).slice(0, 200);
     console.error(`OpenRouter ${res.status} (${model}): ${reason}`);
-    return { error: `OpenRouter ${res.status}: ${reason}` };
+    // For auth failures only, add non-secret facts about the stored key (never the key itself)
+    // so a mis-set secret can be told apart from a revoked one.
+    const keyHint =
+      res.status === 401
+        ? ` [key length ${OPENROUTER_API_KEY.length}, starts with sk-or-: ${OPENROUTER_API_KEY.startsWith('sk-or-') ? 'yes' : 'no'}]`
+        : '';
+    return { error: `OpenRouter ${res.status}: ${reason}${keyHint}` };
   }
   const message = data?.choices?.[0]?.message;
   if (!message) {
