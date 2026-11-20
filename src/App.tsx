@@ -9,6 +9,7 @@ import { History } from './pages/History';
 import { Insights } from './pages/Insights';
 import { Settings } from './pages/Settings';
 import { Ask } from './pages/Ask';
+import { Installments } from './pages/Installments';
 
 function ProtectedShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -36,6 +37,7 @@ function App() {
         <Route path="/history" element={<ProtectedShell><History /></ProtectedShell>} />
         <Route path="/insights" element={<ProtectedShell><Insights /></ProtectedShell>} />
         <Route path="/ask" element={<ProtectedShell><Ask /></ProtectedShell>} />
+        <Route path="/installments" element={<ProtectedShell><Installments /></ProtectedShell>} />
         <Route path="/settings" element={<ProtectedShell><Settings /></ProtectedShell>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

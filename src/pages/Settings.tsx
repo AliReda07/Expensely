@@ -1,5 +1,6 @@
 ﻿import { useState, type ReactNode } from 'react';
-import { Banknote, Bell, ChevronRight, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Banknote, Bell, CalendarClock, ChevronRight, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -156,6 +157,16 @@ export function Settings() {
           icon={<Wallet size={18} className="text-emerald-600 dark:text-emerald-400" />}
           iconBg="bg-emerald-50 dark:bg-emerald-500/10"
         />
+        <Link to="/installments" className="block">
+          <SettingsRow
+            as="div"
+            label="Installments"
+            sublabel="valU, Contact, Souhoola and bank plans, with reminders"
+            icon={<CalendarClock size={18} className="text-rose-600 dark:text-rose-400" />}
+            iconBg="bg-rose-50 dark:bg-rose-500/10"
+            trailing={<ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
+          />
+        </Link>
         <SettingsRow
           as="button"
           onClick={() => setShowCurrency(true)}

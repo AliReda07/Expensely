@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CreditCard, Layers, Pencil, Plus, TriangleAlert, Wallet, X } from 'lucide-react';
+import { CalendarClock, CreditCard, Layers, Pencil, Plus, TriangleAlert, Wallet, X } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
@@ -8,6 +8,8 @@ import { useCards } from '../hooks/useCards';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBalance } from '../hooks/useBalance';
 import { usePaymentDue } from '../hooks/usePaymentDue';
+import { useInstallments } from '../hooks/useInstallments';
+import { describeDue, isActive, nextInstallment } from '../lib/installments';
 import { BalanceCard, type AccountOption } from '../components/BalanceCard';
 import { CardBalances } from '../components/CardBalances';
 import { AddCardSheet } from '../components/AddCardSheet';
@@ -58,6 +60,12 @@ export function Home() {
   })();
   const { transactions: paymentCheckTransactions } = useTransactions(categories, { start: paymentCheckStart });
   const { dueCards, bannerCards, dismiss } = usePaymentDue(cards, balanceByCard, paymentCheckTransactions);
+  const { plans: installmentPlans } = useInstallments();
+  const activeInstallments = installmentPlans.filter(isActive);
+  const soonestInstallment = activeInstallments
+    .map((plan) => ({ plan, next: nextInstallment(plan, new Date()) }))
+    .sort((a, b) => (a.next?.daysUntil ?? 0) - (b.next?.daysUntil ?? 0))[0];
+  const soonestDue = soonestInstallment?.next ? describeDue(soonestInstallment.next.daysUntil) : null;
   const dueByCard = new Map(dueCards.map((d) => [d.card.id, d]));
 
   const currency = profile?.currency ?? 'EGP';
@@ -205,6 +213,32 @@ export function Home() {
             dueByCard={dueByCard}
           />
         </>
+      )}
+
+      {soonestInstallment && soonestDue && (
+        <Link
+          to="/installments"
+          className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-stone-200/60 transition-transform active:scale-[0.99] dark:bg-stone-900 dark:shadow-black/40"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-500/10">
+            <CalendarClock size={18} className="text-rose-600 dark:text-rose-400" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+              {soonestInstallment.plan.name}
+            </span>
+            <span
+              className={`block text-xs ${
+                soonestDue.tone === 'overdue' || soonestDue.tone === 'urgent'
+                  ? 'font-semibold text-red-600 dark:text-red-400'
+                  : 'text-stone-600 dark:text-stone-400'
+              }`}
+            >
+              {soonestDue.text}
+              {activeInstallments.length > 1 ? ` · ${activeInstallments.length} active installment plans` : ' · installment'}
+            </span>
+          </span>
+        </Link>
       )}
 
       {profile?.overall_budget ? (
