@@ -51,3 +51,6 @@ ANDROID_SMS_PLAN.md
 
 # Premium / business plan. Kept local: pricing and product strategy are not for a public repo.
 PREMIUM_PLAN.md
+
+# Family feature design notes. Kept local with the other planning docs.
+FAMILY_DESIGN.md
