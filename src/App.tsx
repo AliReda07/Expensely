@@ -12,6 +12,7 @@ import { Ask } from './pages/Ask';
 import { Installments } from './pages/Installments';
 import { Family } from './pages/Family';
 import { Join } from './pages/Join';
+import { Privacy } from './pages/Privacy';
 import { peekStashedInviteToken } from './lib/family';
 
 function ProtectedShell({ children }: { children: ReactNode }) {
@@ -45,6 +46,7 @@ function App() {
         <Route path="/insights" element={<ProtectedShell><Insights /></ProtectedShell>} />
         <Route path="/ask" element={<ProtectedShell><Ask /></ProtectedShell>} />
         <Route path="/join" element={<Join />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/family" element={<ProtectedShell><Family /></ProtectedShell>} />
         <Route path="/installments" element={<ProtectedShell><Installments /></ProtectedShell>} />
         <Route path="/settings" element={<ProtectedShell><Settings /></ProtectedShell>} />

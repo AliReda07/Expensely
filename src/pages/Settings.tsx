@@ -1,6 +1,6 @@
 ﻿import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Banknote, Bell, CalendarClock, ChevronRight, Users, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Banknote, Bell, CalendarClock, ChevronRight, ShieldCheck, Users, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
@@ -67,6 +67,16 @@ export function Settings() {
           icon={<span className="text-sm font-semibold text-brand">{(user?.email ?? '?')[0].toUpperCase()}</span>}
           iconBg="bg-brand/10"
         />
+        <Link to="/privacy" className="block">
+          <SettingsRow
+            as="div"
+            label="Privacy policy"
+            sublabel="What we collect and who handles it"
+            icon={<ShieldCheck size={18} className="text-stone-600 dark:text-stone-300" />}
+            iconBg="bg-stone-100 dark:bg-stone-700"
+            trailing={<ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
+          />
+        </Link>
         <SettingsRow
           as="button"
           onClick={() => signOut()}

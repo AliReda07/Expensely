@@ -78,6 +78,11 @@ export function Login() {
           Sign up
         </Link>
       </p>
+      <p className="mt-3 text-center text-xs text-stone-500 dark:text-stone-400">
+        <Link to="/privacy" className="underline">
+          Privacy policy
+        </Link>
+      </p>
     </div>
   );
 }

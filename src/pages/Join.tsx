@@ -200,7 +200,12 @@ function JoinForm({ token, email }: { token: string; email: string }) {
 
         <label className="flex cursor-pointer items-start gap-2.5 text-sm text-stone-700 dark:text-stone-300">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 accent-[var(--color-brand)]" />
-          I understand what will be shared and I agree.
+          <span>
+            I understand what will be shared and I agree.{' '}
+            <Link to="/privacy" target="_blank" className="underline">
+              Privacy policy
+            </Link>
+          </span>
         </label>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
