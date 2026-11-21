@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { familyErrorMessage } from '../lib/family';
-import { toMonthStart, type FamilySummary, type RecentRow } from '../lib/familySummary';
+import { toMonthStart, type FamilyAlert, type FamilySummary, type RecentRow } from '../lib/familySummary';
 
 /** The owner's family dashboard numbers for a month. Shows only what members have chosen to share. */
-export function useFamilySummary(month: Date) {
+export function useFamilySummary(month: Date, refreshKey = 0) {
   const [summary, setSummary] = useState<FamilySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export function useFamilySummary(month: Date) {
     return () => {
       cancelled = true;
     };
-  }, [monthStart]);
+  }, [monthStart, refreshKey]);
 
   return { summary, error, loading };
 }
@@ -41,4 +41,33 @@ export async function fetchMemberRecent(memberId: string, limit = 20): Promise<{
     };
   }
   return { rows: (data as RecentRow[] | null) ?? [], error: null };
+}
+
+/** Budget alerts (80% / over) and large purchases for the owner. Refetches when `refreshKey` changes. */
+export function useFamilyAlerts(refreshKey = 0) {
+  const [alerts, setAlerts] = useState<FamilyAlert[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.rpc('household_alerts').then(({ data, error }) => {
+      if (!cancelled) setAlerts(error ? [] : ((data as FamilyAlert[] | null) ?? []));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  return alerts;
+}
+
+/** The parent sets a member's budget; amount null removes it. categoryId null is the overall budget. */
+export async function setMemberBudget(memberId: string, categoryId: string | null, amount: number | null): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('set_member_budget', { p_member: memberId, p_category: categoryId, p_amount: amount });
+  return { error: error ? familyErrorMessage(error.message) : null };
+}
+
+/** Purchases at or above this are flagged; null turns the flag off. */
+export async function setLargePurchaseThreshold(amount: number | null): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('set_large_purchase_threshold', { p_amount: amount });
+  return { error: error ? familyErrorMessage(error.message) : null };
 }

@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, History } from 'lucide-react';
+import { BellRing, ChevronDown, History, TriangleAlert } from 'lucide-react';
 import { MonthSelector } from './MonthSelector';
 import { Sheet } from './Sheet';
-import { useFamilySummary, fetchMemberRecent } from '../hooks/useFamilySummary';
+import { useFamilyAlerts, useFamilySummary, fetchMemberRecent } from '../hooks/useFamilySummary';
+import { MemberBudgetSheet, ThresholdSheet } from './FamilyBudgetSheets';
 import {
+  alertText,
   budgetState,
   combineCategories,
   memberDisplayName,
   shareOfTotal,
   type CategoryTotal,
+  type FamilyAlert,
   type MemberSummary,
   type RecentRow,
 } from '../lib/familySummary';
@@ -45,8 +48,14 @@ function CategoryBars({ categories, currency, limit }: { categories: CategoryTot
 
 export function FamilyDashboard({ currency, currentUserId }: { currency: string; currentUserId: string | undefined }) {
   const [month, setMonth] = useState(() => new Date());
-  const { summary, error, loading } = useFamilySummary(month);
+  // Bumped after the parent changes a budget or the threshold, so the numbers and alerts refetch.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey((k) => k + 1);
+  const { summary, error, loading } = useFamilySummary(month, refreshKey);
+  const alerts = useFamilyAlerts(refreshKey);
   const [recentFor, setRecentFor] = useState<MemberSummary | null>(null);
+  const [budgetFor, setBudgetFor] = useState<MemberSummary | null>(null);
+  const [showThreshold, setShowThreshold] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -69,6 +78,14 @@ export function FamilyDashboard({ currency, currentUserId }: { currency: string;
             <p className="mt-1 text-[11px] text-stone-500 dark:text-stone-400">Only what each member has chosen to share.</p>
           </div>
 
+          {alerts.length > 0 && (
+            <AlertsCard
+              alerts={alerts}
+              currency={currency}
+              nameOf={(a) => memberDisplayName({ user_id: a.member_id, email: a.email }, currentUserId)}
+            />
+          )}
+
           {summary.family_expense === 0 && summary.family_income === 0 ? (
             <p className={`${CARD} text-center text-sm text-stone-600 dark:text-stone-400`}>No shared spending this month.</p>
           ) : (
@@ -83,12 +100,44 @@ export function FamilyDashboard({ currency, currentUserId }: { currency: string;
                     currency={currency}
                     name={memberDisplayName(m, currentUserId)}
                     onShowRecent={() => setRecentFor(m)}
+                    onSetBudgets={() => setBudgetFor(m)}
                   />
                 ))}
               </div>
             </>
           )}
+
+          <button
+            onClick={() => setShowThreshold(true)}
+            className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm shadow-stone-200/60 transition-transform active:scale-[0.99] dark:bg-stone-900 dark:shadow-black/40"
+          >
+            <BellRing size={18} className="shrink-0 text-stone-500 dark:text-stone-400" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-stone-800 dark:text-stone-100">Flag large purchases</span>
+              <span className="block text-xs text-stone-600 dark:text-stone-400">
+                {summary.large_purchase_threshold ? `At ${formatCurrency(Number(summary.large_purchase_threshold), currency)} or more` : 'Off'}
+              </span>
+            </span>
+          </button>
         </>
+      )}
+
+      {budgetFor && (
+        <MemberBudgetSheet
+          member={budgetFor}
+          name={memberDisplayName(budgetFor, currentUserId)}
+          currency={currency}
+          onChanged={refresh}
+          onClose={() => setBudgetFor(null)}
+        />
+      )}
+      {showThreshold && summary && (
+        <ThresholdSheet
+          current={summary.large_purchase_threshold ? Number(summary.large_purchase_threshold) : null}
+          currency={currency}
+          onChanged={refresh}
+          onClose={() => setShowThreshold(false)}
+        />
       )}
 
       {recentFor && (
@@ -99,6 +148,36 @@ export function FamilyDashboard({ currency, currentUserId }: { currency: string;
           onClose={() => setRecentFor(null)}
         />
       )}
+    </div>
+  );
+}
+
+function AlertsCard({
+  alerts,
+  currency,
+  nameOf,
+}: {
+  alerts: FamilyAlert[];
+  currency: string;
+  nameOf: (a: FamilyAlert) => string;
+}) {
+  return (
+    <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Needs attention</p>
+      <ul className="space-y-1.5">
+        {alerts.map((a, i) => {
+          const { text, tone } = alertText(a, nameOf(a), (n) => formatCurrency(n, currency), (d) => formatDate(d));
+          return (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <TriangleAlert
+                size={15}
+                className={`mt-0.5 shrink-0 ${tone === 'over' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}
+              />
+              <span className={tone === 'over' ? 'font-medium text-red-800 dark:text-red-300' : 'text-amber-900 dark:text-amber-200'}>{text}</span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -125,12 +204,14 @@ function MemberCard({
   currency,
   name,
   onShowRecent,
+  onSetBudgets,
 }: {
   member: MemberSummary;
   familyExpense: number;
   currency: string;
   name: string;
   onShowRecent: () => void;
+  onSetBudgets: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const totalsOnly = member.role === 'adult' && member.share_mode === 'totals';
@@ -171,7 +252,7 @@ function MemberCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-400">Budgets</p>
               {member.budgets.map((b) => {
                 const { ratio, level } = budgetState(b);
-                const label = b.category_id === null ? 'Overall' : (member.by_category.find((c) => c.category_id === b.category_id)?.name ?? 'Category');
+                const label = b.category_name ?? (b.category_id === null ? 'Overall' : 'Category');
                 return (
                   <div key={b.category_id ?? 'overall'}>
                     <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
@@ -194,15 +275,22 @@ function MemberCard({
             </div>
           )}
 
-          {!totalsOnly && (
-            <button
-              onClick={onShowRecent}
-              className="flex items-center gap-1.5 text-sm font-semibold text-brand transition-transform active:scale-95"
-            >
-              <History size={15} />
-              Recent transactions
-            </button>
-          )}
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {!totalsOnly && (
+              <button
+                onClick={onShowRecent}
+                className="flex items-center gap-1.5 text-sm font-semibold text-brand transition-transform active:scale-95"
+              >
+                <History size={15} />
+                Recent transactions
+              </button>
+            )}
+            {member.role !== 'owner' && (
+              <button onClick={onSetBudgets} className="text-sm font-semibold text-brand transition-transform active:scale-95">
+                {member.budgets.length > 0 ? 'Edit budgets' : 'Set budgets'}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

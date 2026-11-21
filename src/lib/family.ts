@@ -73,6 +73,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_name: 'Give the family a name (up to 60 characters).',
   children_cannot_change: "A child's sharing is set by the family and can't be changed.",
   owner_cannot_leave: 'The owner can delete the family instead of leaving it.',
+  invalid_category: "That category can't be used for this member.",
+  invalid_amount: 'Enter an amount greater than 0.',
   not_applicable: "You're the owner, so there's nothing to change here.",
 };
 

@@ -12,6 +12,8 @@ export interface CategoryTotal {
 export interface MemberBudget {
   /** null is the member's overall monthly budget. */
   category_id: string | null;
+  /** null for the overall budget. */
+  category_name?: string | null;
   amount: number;
   spent: number;
 }
@@ -28,6 +30,8 @@ export interface MemberSummary {
 }
 
 export interface FamilySummary {
+  /** Purchases at or above this are flagged in the alerts; null when not set. */
+  large_purchase_threshold?: number | null;
   month_start: string;
   month_end: string;
   family_expense: number;
@@ -84,4 +88,42 @@ export type BudgetLevel = 'ok' | 'near' | 'over';
 export function budgetState(budget: Pick<MemberBudget, 'amount' | 'spent'>): { ratio: number; level: BudgetLevel } {
   const ratio = budget.amount > 0 ? budget.spent / budget.amount : 0;
   return { ratio, level: ratio >= 1 ? 'over' : ratio >= 0.8 ? 'near' : 'ok' };
+}
+
+export interface BudgetAlert {
+  type: 'budget';
+  member_id: string;
+  email: string;
+  category_id: string | null;
+  category_name?: string | null;
+  amount: number;
+  spent: number;
+  level: 'near' | 'over';
+}
+
+export interface LargePurchaseAlert {
+  type: 'large_purchase';
+  member_id: string;
+  email: string;
+  amount: number;
+  date: string;
+}
+
+export type FamilyAlert = BudgetAlert | LargePurchaseAlert;
+
+/** Wording for an alert row, and how loudly to show it. Formatting is passed in so this stays pure. */
+export function alertText(
+  alert: FamilyAlert,
+  name: string,
+  money: (n: number) => string,
+  day: (isoDate: string) => string,
+): { text: string; tone: 'over' | 'near' | 'info' } {
+  if (alert.type === 'large_purchase') {
+    return { text: `${name} spent ${money(Number(alert.amount))} on ${day(alert.date)}`, tone: 'info' };
+  }
+  const scope = alert.category_name ? `${alert.category_name} budget` : 'overall budget';
+  const amounts = `${money(Number(alert.spent))} of ${money(Number(alert.amount))}`;
+  if (alert.level === 'over') return { text: `${name} is over their ${scope} (${amounts})`, tone: 'over' };
+  const pct = Math.round((Number(alert.spent) / Number(alert.amount)) * 100);
+  return { text: `${name} has used ${pct}% of their ${scope} (${amounts})`, tone: 'near' };
 }

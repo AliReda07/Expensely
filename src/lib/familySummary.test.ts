@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { budgetState, combineCategories, memberDisplayName, shareOfTotal, toMonthStart } from './familySummary';
+import { alertText, budgetState, combineCategories, memberDisplayName, shareOfTotal, toMonthStart } from './familySummary';
 
 const cat = (name: string, amount: number, color: string | null = '#111111') => ({ category_id: null, name, color, amount });
 
@@ -61,5 +61,32 @@ describe('budgetState', () => {
     expect(budgetState({ amount: 100, spent: 80 }).level).toBe('near');
     expect(budgetState({ amount: 100, spent: 100 }).level).toBe('over');
     expect(budgetState({ amount: 100, spent: 150 }).ratio).toBe(1.5);
+  });
+});
+
+describe('alertText', () => {
+  const money = (n: number) => `E${n}`;
+  const day = (d: string) => `on-${d}`;
+  const base = { member_id: 'm', email: 'sara@x.com' };
+
+  it('words a near-budget alert with the percentage', () => {
+    expect(alertText({ ...base, type: 'budget', category_id: 'c', category_name: 'Food', amount: 200, spent: 170, level: 'near' }, 'Sara', money, day)).toEqual({
+      text: 'Sara has used 85% of their Food budget (E170 of E200)',
+      tone: 'near',
+    });
+  });
+
+  it('words an over-budget alert, and the overall budget when there is no category', () => {
+    expect(alertText({ ...base, type: 'budget', category_id: null, category_name: null, amount: 100, spent: 130, level: 'over' }, 'Sara', money, day)).toEqual({
+      text: 'Sara is over their overall budget (E130 of E100)',
+      tone: 'over',
+    });
+  });
+
+  it('words a large purchase', () => {
+    expect(alertText({ ...base, type: 'large_purchase', amount: 3200, date: '2026-11-18' }, 'Sara', money, day)).toEqual({
+      text: 'Sara spent E3200 on on-2026-11-18',
+      tone: 'info',
+    });
   });
 });
