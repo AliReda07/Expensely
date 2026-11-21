@@ -137,25 +137,26 @@ export function Privacy() {
 
           <Section title="How long we keep it">
             <p>
-              We keep your data until you ask us to delete it. You can delete individual transactions, cards, budgets and installment plans
-              yourself in the app. Deleting your whole account is not available in the app yet: email us and we will do it. The AI
-              provider may keep requests for a time under its own policy.
+              We keep your data until you delete your account. You can delete individual transactions, cards, budgets and installment plans
+              yourself at any time. To remove everything, use <strong>Settings → Delete my account</strong>: your data is deleted from our
+              database straight away and cannot be recovered. Copies held in our providers&apos; backups or logs are removed on their normal
+              schedules, and the AI provider may keep requests for a time under its own policy.
             </p>
           </Section>
 
           <Section title="Your rights">
-            <p>You can ask us to:</p>
+            <p>You can:</p>
             <List
               items={[
-                'show you the data we hold about you, or give you a copy;',
-                'correct data that is wrong (most of it you can edit yourself in the app);',
-                'delete your data or your account;',
-                'stop using your data for a purpose, or withdraw a consent you gave.',
+                <>get a copy of your data: <strong>Settings → Download my data</strong> gives you a file with everything in your account;</>,
+                'correct data that is wrong: you can edit your transactions, cards, budgets and plans yourself in the app;',
+                <>delete your account and all its data: <strong>Settings → Delete my account</strong>;</>,
+                'stop us using your data for a purpose, or withdraw a consent you gave.',
               ]}
             />
             <p>
-              Email the contact above. We aim to answer within 6 working days. A self-service export and delete option inside the app is not
-              built yet.
+              For anything the app does not cover, email the contact above. We aim to answer within 6 working days. The download file leaves
+              out other people&apos;s data and secrets such as your SMS link and notification keys.
             </p>
           </Section>
 

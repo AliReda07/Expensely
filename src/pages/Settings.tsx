@@ -1,7 +1,11 @@
 ﻿import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Banknote, Bell, CalendarClock, ChevronRight, ShieldCheck, Users, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
+import { Banknote, Bell, CalendarClock, ChevronRight, Download, ShieldCheck, Trash2, Users, LogOut, Sparkles, MessageSquareText, Monitor, Moon, Plus, Sun, Wallet, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { downloadJson, exportFileName } from '../lib/dataExport';
+import { useHouseholdRole } from '../hooks/useHousehold';
+import { DeleteAccountSheet } from '../components/DeleteAccountSheet';
 import { useProfile } from '../hooks/useProfile';
 import { useCategories } from '../hooks/useCategories';
 import { useBudgets } from '../hooks/useBudgets';
@@ -42,6 +46,33 @@ export function Settings() {
   const [showCurrency, setShowCurrency] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string } | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const familyRole = useHouseholdRole();
+
+  const exportMyData = async () => {
+    const { data, error } = await supabase.rpc('export_my_data');
+    if (error || !data) return { error: 'Could not prepare your data. Please try again.' };
+    downloadJson(exportFileName(), data);
+    return { error: null };
+  };
+
+  const downloadFromRow = async () => {
+    setExportError(null);
+    setExportBusy(true);
+    const { error } = await exportMyData();
+    setExportBusy(false);
+    if (error) setExportError(error);
+  };
+
+  const deleteMyAccount = async (typedEmail: string) => {
+    const { error } = await supabase.functions.invoke('delete-account', { body: { confirm_email: typedEmail } });
+    if (error) return { error: 'Could not delete the account. Please try again.' };
+    // The account no longer exists, so there is nothing to tell the server; just clear this device.
+    await supabase.auth.signOut({ scope: 'local' });
+    return { error: null };
+  };
 
   const togglePush = async () => {
     setPushBusy(true);
@@ -77,6 +108,25 @@ export function Settings() {
             trailing={<ChevronRight size={18} className="shrink-0 text-stone-300 dark:text-stone-600" />}
           />
         </Link>
+        <SettingsRow
+          as="button"
+          onClick={() => void downloadFromRow()}
+          label="Download my data"
+          sublabel={exportError ?? (exportBusy ? 'Preparing your file…' : 'A copy of everything in your account, as a file')}
+          icon={<Download size={18} className="text-sky-600 dark:text-sky-400" />}
+          iconBg="bg-sky-50 dark:bg-sky-500/10"
+          showChevron={false}
+        />
+        <SettingsRow
+          as="button"
+          onClick={() => setShowDeleteAccount(true)}
+          label="Delete my account"
+          sublabel="Permanently remove your account and all its data"
+          icon={<Trash2 size={18} className="text-red-500 dark:text-red-400" />}
+          iconBg="bg-red-50 dark:bg-red-500/10"
+          labelClassName="text-red-600 dark:text-red-400"
+          showChevron={false}
+        />
         <SettingsRow
           as="button"
           onClick={() => signOut()}
@@ -299,6 +349,16 @@ export function Settings() {
           confirmLabel="Delete"
           onConfirm={() => void deleteCategory(deletingCategory.id)}
           onClose={() => setDeletingCategory(null)}
+        />
+      )}
+
+      {showDeleteAccount && (
+        <DeleteAccountSheet
+          email={user?.email ?? ''}
+          familyRole={familyRole}
+          onDownload={exportMyData}
+          onDelete={deleteMyAccount}
+          onClose={() => setShowDeleteAccount(false)}
         />
       )}
     </div>
